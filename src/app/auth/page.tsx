@@ -43,7 +43,11 @@ export default function AuthPage() {
         } else {
           console.log('登录成功:', data);
           toast.success('登录成功！');
-          router.push('/dashboard');
+
+          // 等待一小段时间让认证状态更新
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 100);
         }
       } else {
         console.log('尝试注册...');

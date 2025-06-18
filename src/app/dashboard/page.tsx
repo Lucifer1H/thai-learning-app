@@ -14,9 +14,15 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth');
-    }
+    // 添加延迟以避免竞态条件
+    const timer = setTimeout(() => {
+      if (!loading && !user) {
+        console.log('Dashboard: 用户未认证，重定向到登录页');
+        router.push('/auth');
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
   }, [user, loading, router]);
 
   const handleSignOut = async () => {
