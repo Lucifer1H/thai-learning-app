@@ -30,7 +30,7 @@ A comprehensive Thai language learning website specifically designed for native 
 ### 1. 克隆项目 (Clone the repository)
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Lucifer1H/thai-learning-app.git
 cd thai-learning-app
 ```
 
