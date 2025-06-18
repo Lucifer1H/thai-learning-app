@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from 'react-hot-toast';
 import { Providers } from '@/components/providers';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: "泰语学习 - Thai Language Learning for Chinese Speakers",
@@ -17,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className="antialiased bg-gray-50 text-gray-900">
+        <ErrorBoundary />
         <Providers>
           {children}
           <Toaster
