@@ -65,12 +65,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/thai-learning-app.git"
+    "url": "https://github.com/Lucifer1H/thai-learning-app.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/thai-learning-app/issues"
+    "url": "https://github.com/Lucifer1H/thai-learning-app/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/thai-learning-app#readme",
+  "homepage": "https://github.com/Lucifer1H/thai-learning-app#readme",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
