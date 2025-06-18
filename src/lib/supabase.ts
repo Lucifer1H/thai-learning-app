@@ -1,12 +1,25 @@
 // Supabase configuration will be added later
 // For now, export dummy functions to prevent build errors
 
+const createMockQuery = () => ({
+  select: (columns?: string) => createMockQuery(),
+  insert: (data?: any) => createMockQuery(),
+  update: (data?: any) => createMockQuery(),
+  eq: (column?: string, value?: any) => createMockQuery(),
+  order: (column?: string, options?: any) => createMockQuery(),
+  single: () => Promise.resolve({ data: null, error: null }),
+  then: (callback: any) => Promise.resolve({ data: null, error: null }).then(callback)
+});
+
 export const supabase = {
   auth: {
     getSession: () => Promise.resolve({ data: { session: null } }),
     signOut: () => Promise.resolve(),
+    signInWithPassword: (credentials?: any) => Promise.resolve({ error: null }),
+    signUp: (credentials?: any) => Promise.resolve({ error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
-  }
+  },
+  from: (table?: string) => createMockQuery()
 }
 
 export const createSupabaseClient = () => supabase

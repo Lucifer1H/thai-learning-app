@@ -28,19 +28,15 @@ export function LessonCard({
   isLocked = false,
   estimatedTime,
 }: LessonCardProps) {
-  const CardWrapper = isLocked ? 'div' : Link;
-  const cardProps = isLocked ? {} : { href };
+  const cardClassName = cn(
+    'block bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-200',
+    !isLocked && 'hover:shadow-md hover:border-blue-200 cursor-pointer',
+    isLocked && 'opacity-60 cursor-not-allowed',
+    className
+  );
 
-  return (
-    <CardWrapper
-      {...cardProps}
-      className={cn(
-        'block bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-200',
-        !isLocked && 'hover:shadow-md hover:border-blue-200 cursor-pointer',
-        isLocked && 'opacity-60 cursor-not-allowed',
-        className
-      )}
-    >
+  const cardContent = (
+    <>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center">
           <div className={cn(
@@ -98,6 +94,16 @@ export function LessonCard({
           已完成
         </div>
       )}
-    </CardWrapper>
+    </>
+  );
+
+  if (isLocked) {
+    return <div className={cardClassName}>{cardContent}</div>;
+  }
+
+  return (
+    <Link href={href} className={cardClassName}>
+      {cardContent}
+    </Link>
   );
 }
