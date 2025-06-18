@@ -49,8 +49,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         console.log('Setting user:', session?.user ? 'User found' : 'No user');
+
+        // 确保状态更新
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // 如果是登录成功，添加额外的日志
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('用户已成功登录，认证状态已更新');
+        }
       }
     );
 

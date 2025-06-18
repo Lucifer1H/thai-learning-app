@@ -44,21 +44,15 @@ export default function AuthPage() {
           console.log('登录成功:', data);
           toast.success('登录成功！');
 
-          console.log('准备跳转到 dashboard...');
-          // 尝试多种跳转方法
-          try {
-            console.log('尝试 router.push...');
-            router.push('/dashboard');
+          // 等待认证状态更新后再跳转
+          console.log('等待认证状态更新...');
 
-            // 备用方案：延迟后强制跳转
-            setTimeout(() => {
-              console.log('备用跳转方案...');
-              window.location.href = '/dashboard';
-            }, 1000);
-          } catch (error) {
-            console.error('跳转失败:', error);
+          // 使用更长的延迟确保认证状态已更新
+          setTimeout(() => {
+            console.log('执行跳转到 dashboard...');
+            // 直接使用 window.location 确保跳转成功
             window.location.href = '/dashboard';
-          }
+          }, 1500);
         }
       } else {
         console.log('尝试注册...');
