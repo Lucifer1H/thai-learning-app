@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { createSupabaseClient } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Mail, Lock, User } from 'lucide-react';
@@ -8,7 +8,7 @@ import { BookOpen, Mail, Lock, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { validateEmail, validatePassword, validateName, checkRateLimit } from '@/lib/validation';
 
-export default function AuthPage() {
+function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -262,5 +262,20 @@ export default function AuthPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="h-10 w-10 text-blue-600 mx-auto mb-4" />
+          <div className="text-lg text-gray-600">加载中...</div>
+        </div>
+      </div>
+    }>
+      <AuthForm />
+    </Suspense>
   );
 }
