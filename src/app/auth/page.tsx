@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { createSupabaseClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Mail, Lock, User } from 'lucide-react';
-import { EnvCheck } from '@/components/debug/env-check';
+
 import toast from 'react-hot-toast';
+import { validateEmail, validatePassword, validateName, checkRateLimit } from '@/lib/validation';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,77 +20,126 @@ export default function AuthPage() {
   const router = useRouter();
   const supabase = createSupabaseClient();
 
+  // 输入验证函数
+  const validateInput = (email: string, password: string, fullName?: string) => {
+    // 验证邮箱
+    const emailResult = validateEmail(email);
+    if (!emailResult.isValid) {
+      throw new Error(emailResult.error);
+    }
+
+    // 验证密码
+    const passwordResult = validatePassword(password);
+    if (!passwordResult.isValid) {
+      throw new Error(passwordResult.error);
+    }
+
+    // 验证姓名（仅注册时）
+    if (!isLogin && fullName) {
+      const nameResult = validateName(fullName);
+      if (!nameResult.isValid) {
+        throw new Error(nameResult.error);
+      }
+    }
+
+    return {
+      email: emailResult.sanitizedValue!,
+      password: passwordResult.sanitizedValue!,
+      fullName: fullName ? validateName(fullName).sanitizedValue : undefined
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // 调试信息
-      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-      console.log('Form data:', { email: formData.email, hasPassword: !!formData.password });
+      // 速率限制检查
+      const clientIP = 'client'; // 在实际应用中应该获取真实 IP
+      if (!checkRateLimit(clientIP, 5, 60000)) {
+        toast.error('请求过于频繁，请稍后再试');
+        return;
+      }
+
+      // 输入验证和清理
+      const validatedData = validateInput(formData.email, formData.password, formData.fullName);
 
       if (isLogin) {
-        console.log('尝试登录...');
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
+          email: validatedData.email,
+          password: validatedData.password,
         });
 
-        console.log('登录结果:', { data, error });
-
         if (error) {
-          console.error('登录错误:', error);
-          toast.error(`登录失败: ${error.message}`);
+          // 安全的错误处理 - 不暴露具体错误信息
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('邮箱或密码错误，请重试');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error('请先验证您的邮箱地址');
+          } else {
+            toast.error('登录失败，请稍后重试');
+          }
         } else {
-          console.log('登录成功:', data);
           toast.success('登录成功！');
 
-          // 等待认证状态更新后再跳转
-          console.log('等待认证状态更新...');
-
-          // 使用更长的延迟确保认证状态已更新
+          // 安全的跳转方式
           setTimeout(() => {
-            console.log('执行跳转到 dashboard...');
-            // 直接使用 window.location 确保跳转成功
-            window.location.href = '/dashboard';
-          }, 1500);
+            router.push('/dashboard');
+          }, 1000);
         }
       } else {
-        console.log('尝试注册...');
         const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
+          email: validatedData.email,
+          password: validatedData.password,
           options: {
             data: {
-              full_name: formData.fullName,
+              full_name: validatedData.fullName,
               native_language: 'chinese',
               target_language: 'thai',
             },
           },
         });
 
-        console.log('注册结果:', { data, error });
-
         if (error) {
-          console.error('注册错误:', error);
-          toast.error(`注册失败: ${error.message}`);
+          // 安全的错误处理
+          if (error.message.includes('already registered')) {
+            toast.error('该邮箱已被注册，请直接登录');
+          } else if (error.message.includes('Password')) {
+            toast.error('密码不符合要求，请重新设置');
+          } else {
+            toast.error('注册失败，请稍后重试');
+          }
         } else {
-          console.log('注册成功:', data);
           toast.success('注册成功！请检查您的邮箱以验证账户。');
         }
       }
     } catch (error) {
-      console.error('认证过程中发生错误:', error);
-      toast.error(`发生错误: ${error instanceof Error ? error.message : '未知错误'}`);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('操作失败，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    // 基本长度限制
+    const maxLengths = {
+      email: 254,
+      password: 128,
+      fullName: 50
+    };
+
+    const maxLength = maxLengths[name as keyof typeof maxLengths] || 100;
+    const truncatedValue = value.slice(0, maxLength);
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: truncatedValue,
     });
   };
 
@@ -126,6 +176,7 @@ export default function AuthPage() {
                     id="fullName"
                     name="fullName"
                     type="text"
+                    autoComplete="name"
                     required={!isLogin}
                     className="appearance-none relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                     placeholder="您的姓名"
@@ -202,7 +253,6 @@ export default function AuthPage() {
           </div>
         </form>
       </div>
-      <EnvCheck />
     </div>
   );
 }
