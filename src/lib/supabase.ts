@@ -1,18 +1,15 @@
-import { createClient } from '@supabase/supabase-js'
-import { createClientComponentClient, createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+// Supabase configuration will be added later
+// For now, export dummy functions to prevent build errors
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+export const supabase = {
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null } }),
+    signOut: () => Promise.resolve(),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+  }
+}
 
-// For client-side usage
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// For client components
-export const createSupabaseClient = () => createClientComponentClient()
-
-// For server components
-export const createSupabaseServerClient = () => createServerComponentClient({ cookies })
+export const createSupabaseClient = () => supabase
 
 // Database types (will be updated after schema creation)
 export interface Database {

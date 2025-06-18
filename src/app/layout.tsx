@@ -1,23 +1,7 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_Thai, Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'react-hot-toast';
 import { Providers } from '@/components/providers';
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-const notoSansThai = Noto_Sans_Thai({
-  subsets: ["thai"],
-  variable: "--font-thai",
-});
-
-const notoSansChinese = Noto_Sans_SC({
-  subsets: ["chinese-simplified"],
-  variable: "--font-chinese",
-});
 
 export const metadata: Metadata = {
   title: "泰语学习 - Thai Language Learning for Chinese Speakers",
@@ -31,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className={`${inter.variable} ${notoSansThai.variable} ${notoSansChinese.variable}`}>
+    <html lang="zh-CN">
       <body className="antialiased bg-gray-50 text-gray-900">
         <Providers>
           {children}
