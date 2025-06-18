@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createSupabaseClient } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Mail, Lock, User } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ export default function AuthPage() {
   });
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createSupabaseClient();
 
   // 输入验证函数
@@ -81,11 +82,18 @@ export default function AuthPage() {
           }
         } else {
           toast.success('登录成功！');
+          console.log('登录成功，等待认证状态同步...');
 
-          // 安全的跳转方式
+          // 等待认证状态同步后再跳转
           setTimeout(() => {
-            router.push('/dashboard');
-          }, 1000);
+            console.log('准备跳转到 dashboard...');
+            const redirectUrl = searchParams.get('redirectTo') || '/dashboard';
+
+            // 使用 window.location.href 进行完整的页面跳转
+            // 这样可以确保中间件重新检查认证状态
+            console.log('使用 window.location.href 跳转到:', redirectUrl);
+            window.location.href = redirectUrl;
+          }, 1500); // 给认证状态足够的同步时间
         }
       } else {
         const { data, error } = await supabase.auth.signUp({

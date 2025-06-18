@@ -14,13 +14,23 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    // 添加延迟以避免竞态条件
+    console.log('Dashboard useEffect:', { user: !!user, loading, userEmail: user?.email });
+
+    // 只有在确定没有用户且不在加载状态时才重定向
+    // 增加更长的延迟以确保认证状态完全同步
     const timer = setTimeout(() => {
+      console.log('Dashboard 延迟检查:', { user: !!user, loading, userEmail: user?.email });
+
+      // 更宽松的检查条件：只有在明确没有用户且加载完成时才重定向
       if (!loading && !user) {
         console.log('Dashboard: 用户未认证，重定向到登录页');
-        router.push('/auth');
+        router.push('/auth?redirectTo=' + encodeURIComponent('/dashboard'));
+      } else if (user) {
+        console.log('Dashboard: 用户已认证，显示页面');
+      } else if (loading) {
+        console.log('Dashboard: 仍在加载认证状态...');
       }
-    }, 200);
+    }, 3000); // 进一步增加延迟时间
 
     return () => clearTimeout(timer);
   }, [user, loading, router]);
