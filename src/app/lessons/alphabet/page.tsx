@@ -9,6 +9,7 @@ import { Button, AudioButton } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { StrokeOrder, PracticeCanvas } from '@/components/lesson/stroke-order';
 import { ArrowLeft, ArrowRight, Volume2, BookOpen } from 'lucide-react';
+import { playAudioWithFallback } from '@/lib/audio-utils';
 import Link from 'next/link';
 
 // Thai consonants data with stroke information
@@ -109,14 +110,23 @@ export default function AlphabetLessonPage() {
     setCompletedLetters(prev => new Set([...prev, currentIndex]));
   };
 
-  const playAudio = () => {
+  const playAudio = async () => {
+    if (isPlaying) return;
+
     setIsPlaying(true);
-    // Simulate audio playback
-    setTimeout(() => setIsPlaying(false), 2000);
-    
-    // In a real implementation, you would play the actual audio file
-    // const audio = new Audio(`/audio/consonants/${currentLetter.letter}.mp3`);
-    // audio.play();
+
+    try {
+      // 尝试播放音频文件，如果失败则使用语音合成
+      const audioUrl = `/audio/consonants/${currentLetter.letter}.mp3`;
+      await playAudioWithFallback(audioUrl, currentLetter.letter, {
+        lang: 'th-TH',
+        rate: 0.8
+      });
+    } catch (error) {
+      console.warn('音频播放失败:', error);
+    } finally {
+      setIsPlaying(false);
+    }
   };
 
   return (

@@ -8,6 +8,7 @@ import { LoadingPage } from '@/components/ui/loading';
 import { Button, AudioButton } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { playAudioWithFallback } from '@/lib/audio-utils';
 import Link from 'next/link';
 
 // Thai vowels data
@@ -64,9 +65,23 @@ export default function VowelsLessonPage() {
     setCompletedVowels(prev => new Set([...prev, currentIndex]));
   };
 
-  const playAudio = () => {
+  const playAudio = async () => {
+    if (isPlaying) return;
+
     setIsPlaying(true);
-    setTimeout(() => setIsPlaying(false), 1500);
+
+    try {
+      // 尝试播放音频文件，如果失败则使用语音合成
+      const audioUrl = `/audio/vowels/${currentVowel.symbol}.mp3`;
+      await playAudioWithFallback(audioUrl, currentVowel.symbol, {
+        lang: 'th-TH',
+        rate: 0.8
+      });
+    } catch (error) {
+      console.warn('音频播放失败:', error);
+    } finally {
+      setIsPlaying(false);
+    }
   };
 
   return (
@@ -234,6 +249,7 @@ export default function VowelsLessonPage() {
               <div className="grid grid-cols-5 gap-2">
                 {thaiVowels.map((vowel, index) => (
                   <button
+                    type="button"
                     key={index}
                     onClick={() => setCurrentIndex(index)}
                     className={`
