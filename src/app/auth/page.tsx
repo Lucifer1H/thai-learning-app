@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createSupabaseClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Mail, Lock, User } from 'lucide-react';
+import { EnvCheck } from '@/components/debug/env-check';
 import toast from 'react-hot-toast';
 
 export default function AuthPage() {
@@ -23,20 +24,30 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
+      // 调试信息
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+      console.log('Form data:', { email: formData.email, hasPassword: !!formData.password });
+
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('尝试登录...');
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
 
+        console.log('登录结果:', { data, error });
+
         if (error) {
-          toast.error(error.message);
+          console.error('登录错误:', error);
+          toast.error(`登录失败: ${error.message}`);
         } else {
+          console.log('登录成功:', data);
           toast.success('登录成功！');
           router.push('/dashboard');
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        console.log('尝试注册...');
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
@@ -48,14 +59,19 @@ export default function AuthPage() {
           },
         });
 
+        console.log('注册结果:', { data, error });
+
         if (error) {
-          toast.error(error.message);
+          console.error('注册错误:', error);
+          toast.error(`注册失败: ${error.message}`);
         } else {
+          console.log('注册成功:', data);
           toast.success('注册成功！请检查您的邮箱以验证账户。');
         }
       }
     } catch (error) {
-      toast.error('发生错误，请重试。');
+      console.error('认证过程中发生错误:', error);
+      toast.error(`发生错误: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setLoading(false);
     }
@@ -177,6 +193,7 @@ export default function AuthPage() {
           </div>
         </form>
       </div>
+      <EnvCheck />
     </div>
   );
 }
