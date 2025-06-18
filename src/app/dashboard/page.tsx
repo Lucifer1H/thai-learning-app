@@ -62,11 +62,11 @@ export default function Dashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 chinese-text">学习进度</p>
-                <p className="text-2xl font-bold text-gray-900">15%</p>
+                <p className="text-2xl font-bold text-gray-900">0%</p>
               </div>
             </div>
             <div className="mt-4">
-              <ProgressBar progress={15} />
+              <ProgressBar progress={0} />
             </div>
           </div>
 
@@ -77,7 +77,7 @@ export default function Dashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 chinese-text">学习天数</p>
-                <p className="text-2xl font-bold text-gray-900">7</p>
+                <p className="text-2xl font-bold text-gray-900">1</p>
               </div>
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function Dashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 chinese-text">已掌握词汇</p>
-                <p className="text-2xl font-bold text-gray-900">42</p>
+                <p className="text-2xl font-bold text-gray-900">0</p>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function Dashboard() {
             description="学习44个辅音和32个元音"
             href="/lessons/alphabet"
             icon={BookOpen}
-            progress={25}
+            progress={0}
             iconColor="text-blue-600"
             iconBgColor="bg-blue-100"
             estimatedTime={20}
@@ -113,7 +113,7 @@ export default function Dashboard() {
             description="掌握泰语的5个声调"
             href="/lessons/pronunciation"
             icon={Volume2}
-            progress={10}
+            progress={0}
             iconColor="text-green-600"
             iconBgColor="bg-green-100"
             estimatedTime={15}
@@ -124,7 +124,7 @@ export default function Dashboard() {
             description="练习泰文字母书写"
             href="/lessons/writing"
             icon={PenTool}
-            progress={5}
+            progress={0}
             iconColor="text-purple-600"
             iconBgColor="bg-purple-100"
             estimatedTime={25}
@@ -135,7 +135,7 @@ export default function Dashboard() {
             description="常用词汇和短语"
             href="/vocabulary"
             icon={BookOpen}
-            progress={20}
+            progress={0}
             iconColor="text-red-600"
             iconBgColor="bg-red-100"
             estimatedTime={10}
@@ -176,12 +176,12 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="font-medium text-gray-900 chinese-text">学习15分钟</p>
-                <p className="text-sm text-gray-600 chinese-text">今天已学习 8 分钟</p>
+                <p className="text-sm text-gray-600 chinese-text">今天已学习 0 分钟</p>
               </div>
             </div>
             <div className="text-right">
-              <ProgressBar progress={53} className="w-32 mb-1" />
-              <p className="text-sm text-gray-600">53%</p>
+              <ProgressBar progress={0} className="w-32 mb-1" />
+              <p className="text-sm text-gray-600">0%</p>
             </div>
           </div>
         </div>
