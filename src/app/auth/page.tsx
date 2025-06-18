@@ -271,7 +271,7 @@ export default function AuthPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <BookOpen className="h-10 w-10 text-blue-600 mx-auto mb-4" />
-          <div className="text-lg text-gray-600">加载中...</div>
+          <div className="text-lg text-gray-600">正在加载...</div>
         </div>
       </div>
     }>
