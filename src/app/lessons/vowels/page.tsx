@@ -7,8 +7,9 @@ import { Navigation } from '@/components/ui/navigation';
 import { LoadingPage } from '@/components/ui/loading';
 import { Button, AudioButton } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { playAudioWithFallback } from '@/lib/audio-utils';
+import { ArrowLeft, ArrowRight, Settings } from 'lucide-react';
+import { playAudioWithFallback, audioManager } from '@/lib/audio-utils';
+import { VoiceSetupGuide } from '@/components/audio/voice-setup-guide';
 import Link from 'next/link';
 import {
   getThaiVowels,
@@ -42,6 +43,9 @@ export default function VowelsLessonPage() {
   const [vowels, setVowels] = useState<ThaiVowel[]>([]);
   const [userProgress, setUserProgress] = useState<UserLetterProgress[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false);
+  const [voiceQuality, setVoiceQuality] = useState<'excellent' | 'good' | 'basic' | 'none'>('none');
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -103,6 +107,29 @@ export default function VowelsLessonPage() {
     loadData();
   }, [user]);
 
+  // 语音质量检测
+  useEffect(() => {
+    const checkVoiceQuality = () => {
+      const quality = audioManager.getVoiceQuality();
+      setVoiceQuality(quality);
+
+      const bestVoice = audioManager.getBestThaiVoice();
+      setSelectedVoice(bestVoice);
+
+      // 如果语音质量很差，自动显示设置指导
+      if (quality === 'none') {
+        setShowVoiceSetup(true);
+      }
+    };
+
+    checkVoiceQuality();
+    speechSynthesis.onvoiceschanged = checkVoiceQuality;
+
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
   if (loading || dataLoading) {
     return <LoadingPage message="加载课程中..." />;
   }
@@ -113,6 +140,19 @@ export default function VowelsLessonPage() {
 
   const currentVowel = vowels[currentIndex];
   const progress = Math.round(((completedVowels.size) / vowels.length) * 100);
+
+  const getVoiceQualityInfo = () => {
+    switch (voiceQuality) {
+      case 'excellent':
+        return { text: '语音质量：优秀', color: 'text-green-600', icon: '🎯' };
+      case 'good':
+        return { text: '语音质量：良好', color: 'text-blue-600', icon: '👍' };
+      case 'basic':
+        return { text: '语音质量：基础', color: 'text-yellow-600', icon: '⚠️' };
+      case 'none':
+        return { text: '未找到泰语语音', color: 'text-red-600', icon: '❌' };
+    }
+  };
 
   const handleNext = () => {
     if (currentIndex < vowels.length - 1) {
@@ -148,17 +188,64 @@ export default function VowelsLessonPage() {
     if (isPlaying) return;
 
     setIsPlaying(true);
+    console.log('开始播放元音音频:', currentVowel.symbol);
 
     try {
-      // 尝试播放音频文件，如果失败则使用语音合成
-      const audioUrl = `/audio/vowels/${currentVowel.symbol}.mp3`;
-      await playAudioWithFallback(audioUrl, currentVowel.symbol, {
-        lang: 'th-TH',
-        rate: 0.8
-      });
+      // 确保语音合成可用
+      if (!('speechSynthesis' in window)) {
+        throw new Error('浏览器不支持语音合成');
+      }
+
+      // 等待语音列表加载
+      const waitForVoices = () => {
+        return new Promise<void>((resolve) => {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            resolve();
+          } else {
+            window.speechSynthesis.onvoiceschanged = () => resolve();
+          }
+        });
+      };
+
+      await waitForVoices();
+
+      // 创建语音合成实例
+      const utterance = new SpeechSynthesisUtterance(currentVowel.symbol);
+
+      // 使用选定的语音或最佳泰语语音
+      const voiceToUse = selectedVoice || audioManager.getBestThaiVoice();
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        console.log('使用泰语语音:', voiceToUse.name);
+      } else {
+        console.log('未找到泰语语音，使用默认语音');
+      }
+
+      utterance.lang = 'th-TH';
+      utterance.rate = 0.6; // 稍慢一些，便于学习元音
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      utterance.onstart = () => {
+        console.log('元音语音开始播放');
+      };
+
+      utterance.onend = () => {
+        console.log('元音语音播放完成');
+        setIsPlaying(false);
+      };
+
+      utterance.onerror = (event) => {
+        console.error('元音语音播放错误:', event.error);
+        setIsPlaying(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+
     } catch (error) {
-      console.warn('音频播放失败:', error);
-    } finally {
+      console.error('元音音频播放失败:', error);
       setIsPlaying(false);
     }
   };
@@ -181,6 +268,19 @@ export default function VowelsLessonPage() {
               </div>
             </div>
             <div className="text-right">
+              <div className="flex items-center space-x-4 mb-2">
+                <span className={`text-xs ${getVoiceQualityInfo().color}`}>
+                  {getVoiceQualityInfo().icon} {getVoiceQualityInfo().text}
+                </span>
+                <Button
+                  onClick={() => setShowVoiceSetup(true)}
+                  variant="ghost"
+                  size="sm"
+                  icon={Settings}
+                  className="chinese-text"
+                  title="语音设置"
+                />
+              </div>
               <p className="text-sm text-gray-600 chinese-text">
                 {currentIndex + 1} / {vowels.length}
               </p>
@@ -388,6 +488,19 @@ export default function VowelsLessonPage() {
           </div>
         )}
       </div>
+
+      {/* 语音设置指导弹窗 */}
+      {showVoiceSetup && (
+        <VoiceSetupGuide
+          onClose={() => setShowVoiceSetup(false)}
+          onVoiceSelected={(voice) => {
+            setSelectedVoice(voice);
+            // 重新检查语音质量
+            const quality = audioManager.getVoiceQuality();
+            setVoiceQuality(quality);
+          }}
+        />
+      )}
     </div>
   );
 }

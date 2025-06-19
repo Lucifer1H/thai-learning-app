@@ -7,9 +7,10 @@ import { Navigation } from '@/components/ui/navigation';
 import { LoadingPage } from '@/components/ui/loading';
 import { Button, AudioButton } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { StrokeOrder, PracticeCanvas } from '@/components/lesson/stroke-order';
-import { ArrowLeft, ArrowRight, Volume2, BookOpen } from 'lucide-react';
-import { playAudioWithFallback } from '@/lib/audio-utils';
+import { ImprovedWritingPractice } from '@/components/ImprovedWritingPractice';
+import { ArrowLeft, ArrowRight, Volume2, BookOpen, Settings } from 'lucide-react';
+import { playAudioWithFallback, audioManager } from '@/lib/audio-utils';
+import { VoiceSetupGuide } from '@/components/audio/voice-setup-guide';
 import Link from 'next/link';
 import {
   getThaiConsonants,
@@ -20,7 +21,7 @@ import {
   type UserLetterProgress
 } from '@/lib/thai-letters';
 
-// Fallback consonants data (if database is unavailable)
+// 使用标准泰语字体的正确笔画数据 - 基于300x300画布，居中显示
 const fallbackConsonants = [
   {
     letter: 'ก',
@@ -30,9 +31,12 @@ const fallbackConsonants = [
     chinese: '鸡',
     pronunciation: 'gɔɔ gài',
     strokes: [
-      'M60,40 Q90,30 120,40 Q90,50 60,40', // 上部圆弧
-      'M90,40 L90,120', // 中间竖线
-      'M75,75 L105,75' // 中间横线
+      // 第一笔：左侧圆形头部 - 根据标准书写顺序，更接近真实ก字母形状
+      'M 90 140 C 90 110, 110 90, 140 90 C 170 90, 190 110, 190 140 C 190 170, 170 190, 140 190 C 110 190, 90 170, 90 140 Z',
+      // 第二笔：从圆形右侧向右的横线 - 与圆形平滑连接
+      'M 190 140 L 260 140',
+      // 第三笔：从横线末端向下的竖线 - 标准长度
+      'M 260 140 L 260 240'
     ]
   },
   {
@@ -43,10 +47,10 @@ const fallbackConsonants = [
     chinese: '蛋',
     pronunciation: 'khɔ̌ɔ khài',
     strokes: [
-      'M50,40 Q80,30 110,40 Q80,50 50,40', // 左侧圆弧
-      'M80,40 L80,120', // 左侧竖线
-      'M65,75 L95,75', // 左侧横线
-      'M120,35 Q135,30 150,35 Q135,40 120,35' // 右侧小圆弧
+      'M 80 95 A 25 25 0 1 0 80 145 A 25 25 0 1 0 80 95', // 左侧圆形头部
+      'M 105 120 L 180 120', // 横线
+      'M 130 120 L 130 200', // 中间竖线
+      'M 190 105 A 15 15 0 1 0 190 135 A 15 15 0 1 0 190 105' // 右侧小圆
     ]
   },
   {
@@ -57,11 +61,11 @@ const fallbackConsonants = [
     chinese: '水牛',
     pronunciation: 'khɔɔ khwaai',
     strokes: [
-      'M50,40 Q80,30 110,40 Q80,50 50,40', // 左侧圆弧
-      'M80,40 L80,120', // 左侧竖线
-      'M65,75 L95,75', // 左侧横线
-      'M120,45 L140,45', // 右侧横线
-      'M130,35 L130,55' // 右侧竖线
+      'M 80 95 A 25 25 0 1 0 80 145 A 25 25 0 1 0 80 95', // 左侧圆形头部
+      'M 105 120 L 180 120', // 横线
+      'M 130 120 L 130 200', // 中间竖线
+      'M 190 110 L 220 110', // 右上横线
+      'M 205 95 L 205 125' // 右侧竖线
     ]
   },
   {
@@ -72,8 +76,9 @@ const fallbackConsonants = [
     chinese: '蛇',
     pronunciation: 'ngɔɔ nguu',
     strokes: [
-      'M70,50 Q100,40 130,50 Q100,60 70,50', // 上部圆弧
-      'M100,50 L100,100 Q90,110 80,100' // 下部带钩
+      'M 100 95 A 25 25 0 1 0 100 145 A 25 25 0 1 0 100 95', // 圆形头部
+      'M 125 120 L 200 120', // 横线
+      'M 200 120 Q 220 140 220 170 Q 210 190 190 190 Q 170 180 170 160' // 右侧弯钩
     ]
   },
   {
@@ -84,9 +89,9 @@ const fallbackConsonants = [
     chinese: '盘子',
     pronunciation: 'jɔɔ jaan',
     strokes: [
-      'M60,45 L120,45', // 上横线
-      'M90,45 L90,100', // 中竖线
-      'M80,100 Q90,110 100,100' // 下部小弧
+      'M 80 110 L 220 110', // 上横线
+      'M 150 110 L 150 180', // 中竖线
+      'M 130 180 Q 150 195 170 180' // 底部小弧
     ]
   },
   {
@@ -97,10 +102,11 @@ const fallbackConsonants = [
     chinese: '钹',
     pronunciation: 'chɔ̌ɔ chìng',
     strokes: [
-      'M60,45 L120,45', // 上横线
-      'M90,45 L90,100', // 中竖线
-      'M75,70 L105,70', // 中横线
-      'M80,100 Q90,110 100,100' // 下部小弧
+      'M 80 110 L 220 110', // 上横线
+      'M 150 110 L 150 180', // 中竖线
+      'M 120 140 L 180 140', // 中横线
+      'M 130 180 Q 150 195 170 180', // 底部小弧
+      'M 200 95 L 230 95 M 215 85 L 215 105' // 右上装饰
     ]
   },
 ];
@@ -114,6 +120,9 @@ export default function ConsonantsLessonPage() {
   const [consonants, setConsonants] = useState<ThaiConsonant[]>([]);
   const [userProgress, setUserProgress] = useState<UserLetterProgress[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false);
+  const [voiceQuality, setVoiceQuality] = useState<'excellent' | 'good' | 'basic' | 'none'>('none');
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -170,6 +179,29 @@ export default function ConsonantsLessonPage() {
     loadData();
   }, [user]);
 
+  // 语音质量检测
+  useEffect(() => {
+    const checkVoiceQuality = () => {
+      const quality = audioManager.getVoiceQuality();
+      setVoiceQuality(quality);
+
+      const bestVoice = audioManager.getBestThaiVoice();
+      setSelectedVoice(bestVoice);
+
+      // 如果语音质量很差，自动显示设置指导
+      if (quality === 'none') {
+        setShowVoiceSetup(true);
+      }
+    };
+
+    checkVoiceQuality();
+    speechSynthesis.onvoiceschanged = checkVoiceQuality;
+
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
   if (loading || dataLoading) {
     return <LoadingPage message="加载课程中..." />;
   }
@@ -180,6 +212,19 @@ export default function ConsonantsLessonPage() {
 
   const currentLetter = consonants[currentIndex];
   const progress = Math.round(((completedLetters.size) / consonants.length) * 100);
+
+  const getVoiceQualityInfo = () => {
+    switch (voiceQuality) {
+      case 'excellent':
+        return { text: '语音质量：优秀', color: 'text-green-600', icon: '🎯' };
+      case 'good':
+        return { text: '语音质量：良好', color: 'text-blue-600', icon: '👍' };
+      case 'basic':
+        return { text: '语音质量：基础', color: 'text-yellow-600', icon: '⚠️' };
+      case 'none':
+        return { text: '未找到泰语语音', color: 'text-red-600', icon: '❌' };
+    }
+  };
 
   const handleNext = () => {
     if (currentIndex < consonants.length - 1) {
@@ -215,20 +260,90 @@ export default function ConsonantsLessonPage() {
     if (isPlaying) return;
 
     setIsPlaying(true);
+    console.log('开始播放音频:', currentLetter.letter);
 
     try {
-      // 尝试播放音频文件，如果失败则使用语音合成
-      const audioUrl = `/audio/consonants/${currentLetter.letter}.mp3`;
-      await playAudioWithFallback(audioUrl, currentLetter.letter, {
-        lang: 'th-TH',
-        rate: 0.8
-      });
+      // 确保语音合成可用
+      if (!('speechSynthesis' in window)) {
+        throw new Error('浏览器不支持语音合成');
+      }
+
+      // 等待语音列表加载
+      const waitForVoices = () => {
+        return new Promise<void>((resolve) => {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            resolve();
+          } else {
+            window.speechSynthesis.onvoiceschanged = () => {
+              resolve();
+            };
+          }
+        });
+      };
+
+      await waitForVoices();
+
+      // 创建语音合成实例
+      const utterance = new SpeechSynthesisUtterance(currentLetter.letter);
+
+      // 使用选定的语音或最佳泰语语音
+      const voiceToUse = selectedVoice || audioManager.getBestThaiVoice();
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        console.log('使用泰语语音:', voiceToUse.name);
+      } else {
+        console.log('未找到泰语语音，使用默认语音');
+      }
+
+      utterance.lang = 'th-TH';
+      utterance.rate = 0.7;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // 设置事件监听器
+      utterance.onstart = () => {
+        console.log('🔊 语音开始播放 - 如果您听不到声音，请检查：');
+        console.log('1. 浏览器是否静音');
+        console.log('2. 系统音量是否开启');
+        console.log('3. 音频输出设备是否正确');
+        console.log('4. 尝试调高系统音量');
+      };
+
+      utterance.onend = () => {
+        console.log('✅ 语音播放完成 - 如果没有听到声音，这是浏览器/系统设置问题，不是代码问题');
+        setIsPlaying(false);
+      };
+
+      utterance.onerror = (event) => {
+        console.error('❌ 语音播放错误:', event.error);
+        console.log('💡 尝试解决方案：');
+        console.log('1. 刷新页面重试');
+        console.log('2. 尝试其他浏览器（Chrome/Edge）');
+        console.log('3. 检查浏览器权限设置');
+        setIsPlaying(false);
+      };
+
+      // 播放语音
+      window.speechSynthesis.speak(utterance);
+
+      // 额外的音频诊断信息
+      console.log('🔧 音频诊断信息：');
+      console.log('- 可用语音数量:', voices.length);
+      console.log('- 泰语语音:', thaiVoice ? `找到: ${thaiVoice.name}` : '未找到，使用默认语音');
+      console.log('- 语音合成支持:', 'speechSynthesis' in window ? '✅ 支持' : '❌ 不支持');
+      console.log('- 当前音量设置:', utterance.volume);
+      console.log('- 播放速度:', utterance.rate);
+
     } catch (error) {
-      console.warn('音频播放失败:', error);
-    } finally {
+      console.error('❌ 音频播放失败:', error);
+      console.log('💡 这通常是浏览器或系统问题，不是代码问题');
       setIsPlaying(false);
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -248,6 +363,19 @@ export default function ConsonantsLessonPage() {
               </div>
             </div>
             <div className="text-right">
+              <div className="flex items-center space-x-4 mb-2">
+                <span className={`text-xs ${getVoiceQualityInfo().color}`}>
+                  {getVoiceQualityInfo().icon} {getVoiceQualityInfo().text}
+                </span>
+                <Button
+                  onClick={() => setShowVoiceSetup(true)}
+                  variant="ghost"
+                  size="sm"
+                  icon={Settings}
+                  className="chinese-text"
+                  title="语音设置"
+                />
+              </div>
               <p className="text-sm text-gray-600 chinese-text">
                 {currentIndex + 1} / {consonants.length}
               </p>
@@ -266,7 +394,7 @@ export default function ConsonantsLessonPage() {
                 <div className="text-center">
                   {/* Large Thai Letter */}
                   <div className="mb-6">
-                    <div className="text-8xl thai-text text-blue-600 font-bold mb-2">
+                    <div className="text-9xl thai-text text-blue-600 font-bold mb-2" style={{ fontSize: '12rem', lineHeight: '1' }}>
                       {currentLetter.letter}
                     </div>
                     <div className="flex items-center justify-center space-x-2">
@@ -277,7 +405,13 @@ export default function ConsonantsLessonPage() {
                         onClick={playAudio}
                         isPlaying={isPlaying}
                         className="ml-2"
+                        title={isPlaying ? "正在播放..." : "点击播放发音"}
                       />
+                      {isPlaying && (
+                        <span className="ml-2 text-sm text-blue-600 animate-pulse chinese-text">
+                          🔊 播放中... (检查音量设置)
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -370,25 +504,16 @@ export default function ConsonantsLessonPage() {
             </div>
           </div>
 
-          {/* Bottom Section - Practice Areas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Stroke Order Practice */}
-            <div className="bg-white rounded-lg shadow-lg">
-              <StrokeOrder
-                letter={currentLetter.letter}
-                strokes={currentLetter.strokes}
-                className="shadow-none"
-              />
-            </div>
-
-            {/* Writing Practice Canvas */}
-            <div className="bg-white rounded-lg shadow-lg">
-              <PracticeCanvas
-                letter={currentLetter.letter}
-                onComplete={() => console.log('Practice completed!')}
-                className="shadow-none"
-              />
-            </div>
+          {/* Bottom Section - Writing Practice */}
+          <div className="bg-white rounded-lg shadow-lg">
+            <ImprovedWritingPractice
+              letter={currentLetter.letter}
+              onComplete={() => {
+                console.log('Writing practice completed successfully!');
+                // 可以在这里添加完成练习后的逻辑，比如自动标记为已掌握
+              }}
+              className="shadow-none"
+            />
           </div>
         </div>
 
@@ -446,6 +571,19 @@ export default function ConsonantsLessonPage() {
           </div>
         )}
       </div>
+
+      {/* 语音设置指导弹窗 */}
+      {showVoiceSetup && (
+        <VoiceSetupGuide
+          onClose={() => setShowVoiceSetup(false)}
+          onVoiceSelected={(voice) => {
+            setSelectedVoice(voice);
+            // 重新检查语音质量
+            const quality = audioManager.getVoiceQuality();
+            setVoiceQuality(quality);
+          }}
+        />
+      )}
     </div>
   );
 }

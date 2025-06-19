@@ -138,7 +138,50 @@ export class AudioManager {
 
   // 获取泰语语音
   getThaiVoices(): SpeechSynthesisVoice[] {
-    return this.getVoices().filter(voice => voice.lang.startsWith('th'));
+    return this.getVoices().filter(voice =>
+      voice.lang.startsWith('th') ||
+      voice.name.toLowerCase().includes('thai')
+    );
+  }
+
+  // 获取最佳泰语语音
+  getBestThaiVoice(): SpeechSynthesisVoice | null {
+    const thaiVoices = this.getThaiVoices();
+    if (thaiVoices.length === 0) return null;
+
+    // 优先选择本地语音
+    const localVoice = thaiVoices.find(voice => voice.localService);
+    if (localVoice) return localVoice;
+
+    // 其次选择标准泰语
+    const standardThai = thaiVoices.find(voice => voice.lang === 'th-TH');
+    if (standardThai) return standardThai;
+
+    // 最后选择任何泰语语音
+    return thaiVoices[0];
+  }
+
+  // 检查语音质量
+  getVoiceQuality(): 'excellent' | 'good' | 'basic' | 'none' {
+    const thaiVoices = this.getThaiVoices();
+
+    if (thaiVoices.length === 0) return 'none';
+
+    const hasLocalThai = thaiVoices.some(voice =>
+      voice.localService && voice.lang === 'th-TH'
+    );
+    if (hasLocalThai) return 'excellent';
+
+    const hasLocal = thaiVoices.some(voice => voice.localService);
+    if (hasLocal) return 'good';
+
+    return 'basic';
+  }
+
+  // 检查是否需要语音设置指导
+  needsVoiceSetup(): boolean {
+    const quality = this.getVoiceQuality();
+    return quality === 'none' || quality === 'basic';
   }
 }
 

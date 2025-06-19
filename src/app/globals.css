@@ -121,7 +121,7 @@ body {
 }
 
 .animate-draw-stroke {
-  animation: draw-stroke 1s ease-in-out forwards;
+  animation: draw-stroke 1.5s ease-in-out forwards;
 }
 
 /* 3D Card flip animation */

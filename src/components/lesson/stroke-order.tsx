@@ -40,25 +40,25 @@ export function StrokeOrder({ letter, strokes, className }: StrokeOrderProps) {
       </h3>
       
       {/* SVG Canvas for stroke order */}
-      <div className="relative bg-gray-50 rounded-lg p-4 mb-4">
+      <div className="relative bg-gray-50 rounded-lg p-6 mb-4">
         <svg
-          width="200"
-          height="200"
-          viewBox="0 0 200 200"
-          className="mx-auto"
+          width="300"
+          height="300"
+          viewBox="0 0 300 300"
+          className="mx-auto border border-gray-200 rounded bg-white"
         >
           {/* Grid lines for guidance */}
           <defs>
-            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>
+            <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#f3f4f6" strokeWidth="1"/>
             </pattern>
           </defs>
-          <rect width="200" height="200" fill="url(#grid)" />
-          
+          <rect width="300" height="300" fill="url(#grid)" />
+
           {/* Center guidelines */}
-          <line x1="100" y1="0" x2="100" y2="200" stroke="#d1d5db" strokeWidth="1" strokeDasharray="5,5" />
-          <line x1="0" y1="100" x2="200" y2="100" stroke="#d1d5db" strokeWidth="1" strokeDasharray="5,5" />
-          
+          <line x1="150" y1="0" x2="150" y2="300" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="5,5" />
+          <line x1="0" y1="150" x2="300" y2="150" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="5,5" />
+
           {/* Completed strokes */}
           {strokes.slice(0, currentStroke).map((stroke, index) => (
             <path
@@ -66,37 +66,37 @@ export function StrokeOrder({ letter, strokes, className }: StrokeOrderProps) {
               d={stroke}
               fill="none"
               stroke="#3b82f6"
-              strokeWidth="4"
+              strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           ))}
-          
+
           {/* Current animating stroke */}
           {isAnimating && currentStroke < strokes.length && (
             <path
               d={strokes[currentStroke]}
               fill="none"
               stroke="#ef4444"
-              strokeWidth="4"
+              strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeDasharray="300"
-              strokeDashoffset="300"
+              strokeDasharray="500"
+              strokeDashoffset="500"
               className="animate-draw-stroke"
             />
           )}
-          
+
           {/* Next stroke preview (faded) */}
           {!isAnimating && currentStroke < strokes.length && (
             <path
               d={strokes[currentStroke]}
               fill="none"
               stroke="#9ca3af"
-              strokeWidth="2"
+              strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeDasharray="5,5"
+              strokeDasharray="8,4"
             />
           )}
         </svg>

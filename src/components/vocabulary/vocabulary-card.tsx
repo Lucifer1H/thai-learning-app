@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AudioPlayer } from '@/components/audio/audio-player';
+import { VoiceSetupGuide } from '@/components/audio/voice-setup-guide';
 import { Button } from '@/components/ui/button';
-import { Volume2, Eye, EyeOff, RotateCcw, Check, X } from 'lucide-react';
+import { Volume2, Eye, EyeOff, RotateCcw, Check, X, Settings, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { audioManager } from '@/lib/audio-utils';
 
 interface VocabularyItem {
   id: string;
@@ -37,6 +39,46 @@ export function VocabularyCard({
 }: VocabularyCardProps) {
   const [showAnswer, setShowAnswer] = useState(initialShowAnswer);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false);
+  const [voiceQuality, setVoiceQuality] = useState<'excellent' | 'good' | 'basic' | 'none'>('none');
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
+
+  // 语音质量检测
+  useEffect(() => {
+    const checkVoiceQuality = () => {
+      const quality = audioManager.getVoiceQuality();
+      setVoiceQuality(quality);
+
+      const bestVoice = audioManager.getBestThaiVoice();
+      setSelectedVoice(bestVoice);
+
+      // 如果语音质量很差，自动显示设置指导
+      if (quality === 'none') {
+        setShowVoiceSetup(true);
+      }
+    };
+
+    checkVoiceQuality();
+    speechSynthesis.onvoiceschanged = checkVoiceQuality;
+
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  const getVoiceQualityInfo = () => {
+    switch (voiceQuality) {
+      case 'excellent':
+        return { text: '语音质量：优秀', color: 'text-green-600', icon: '🎯' };
+      case 'good':
+        return { text: '语音质量：良好', color: 'text-blue-600', icon: '👍' };
+      case 'basic':
+        return { text: '语音质量：基础', color: 'text-yellow-600', icon: '⚠️' };
+      case 'none':
+        return { text: '未找到泰语语音', color: 'text-red-600', icon: '❌' };
+    }
+  };
 
   const handleReveal = () => {
     setShowAnswer(true);
@@ -58,6 +100,71 @@ export function VocabularyCard({
     }
   };
 
+  const playTTS = async () => {
+    if (isPlayingTTS) return;
+
+    setIsPlayingTTS(true);
+    console.log('播放词汇语音合成:', vocabulary.thai_word);
+
+    try {
+      if (!('speechSynthesis' in window)) {
+        throw new Error('浏览器不支持语音合成');
+      }
+
+      // 等待语音列表加载
+      const waitForVoices = () => {
+        return new Promise<void>((resolve) => {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            resolve();
+          } else {
+            window.speechSynthesis.onvoiceschanged = () => resolve();
+          }
+        });
+      };
+
+      await waitForVoices();
+
+      // 创建语音合成实例
+      const utterance = new SpeechSynthesisUtterance(vocabulary.thai_word);
+
+      // 使用选定的语音或最佳泰语语音
+      const voiceToUse = selectedVoice || audioManager.getBestThaiVoice();
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        console.log('使用泰语语音:', voiceToUse.name);
+      } else {
+        console.log('未找到泰语语音，使用默认语音');
+      }
+
+      utterance.lang = 'th-TH';
+      utterance.rate = 0.6; // 稍慢一些，便于学习词汇
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      utterance.onstart = () => {
+        console.log('词汇语音合成开始播放');
+      };
+
+      utterance.onend = () => {
+        console.log('词汇语音合成播放完成');
+        setIsPlayingTTS(false);
+      };
+
+      utterance.onerror = (event) => {
+        console.error('词汇语音合成播放错误:', event.error);
+        setIsPlayingTTS(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+
+    } catch (error) {
+      console.error('词汇语音合成播放失败:', error);
+      setIsPlayingTTS(false);
+    }
+  };
+
   return (
     <div className={cn('max-w-md mx-auto', className)}>
       <div className="relative h-80 perspective-1000">
@@ -70,20 +177,52 @@ export function VocabularyCard({
             <div className="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col justify-between">
               {/* Header */}
               <div className="text-center">
-                <div className="text-sm text-gray-500 chinese-text mb-2">
-                  {vocabulary.category}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-gray-500 chinese-text">
+                    {vocabulary.category}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`text-xs ${getVoiceQualityInfo().color}`}>
+                      {getVoiceQualityInfo().icon} {getVoiceQualityInfo().text}
+                    </span>
+                    <button
+                      onClick={() => setShowVoiceSetup(true)}
+                      className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                      title="语音设置"
+                    >
+                      <Settings className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
                 <div className="text-4xl thai-text text-blue-600 font-bold mb-4">
                   {vocabulary.thai_word}
                 </div>
-                {vocabulary.audio_url && (
-                  <div className="flex justify-center mb-4">
-                    <AudioPlayer 
-                      src={vocabulary.audio_url} 
+                <div className="flex justify-center mb-4">
+                  {vocabulary.audio_url ? (
+                    <AudioPlayer
+                      src={vocabulary.audio_url}
                       variant="minimal"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <Button
+                      onClick={playTTS}
+                      disabled={isPlayingTTS}
+                      variant="outline"
+                      size="sm"
+                      icon={isPlayingTTS ? undefined : Play}
+                      className="chinese-text"
+                    >
+                      {isPlayingTTS ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                          播放中...
+                        </>
+                      ) : (
+                        '🔊 播放发音'
+                      )}
+                    </Button>
+                  )}
+                </div>
                 <div className="text-lg text-gray-600 mb-2">
                   [{vocabulary.pronunciation}]
                 </div>
@@ -214,6 +353,19 @@ export function VocabularyCard({
           </div>
         </div>
       </div>
+
+      {/* 语音设置指导弹窗 */}
+      {showVoiceSetup && (
+        <VoiceSetupGuide
+          onClose={() => setShowVoiceSetup(false)}
+          onVoiceSelected={(voice) => {
+            setSelectedVoice(voice);
+            // 重新检查语音质量
+            const quality = audioManager.getVoiceQuality();
+            setVoiceQuality(quality);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -234,6 +386,46 @@ export function VocabularyQuiz({
 }: VocabularyQuizProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false);
+  const [voiceQuality, setVoiceQuality] = useState<'excellent' | 'good' | 'basic' | 'none'>('none');
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [isPlayingTTS, setIsPlayingTTS] = useState(false);
+
+  // 语音质量检测
+  useEffect(() => {
+    const checkVoiceQuality = () => {
+      const quality = audioManager.getVoiceQuality();
+      setVoiceQuality(quality);
+
+      const bestVoice = audioManager.getBestThaiVoice();
+      setSelectedVoice(bestVoice);
+
+      // 如果语音质量很差，自动显示设置指导
+      if (quality === 'none') {
+        setShowVoiceSetup(true);
+      }
+    };
+
+    checkVoiceQuality();
+    speechSynthesis.onvoiceschanged = checkVoiceQuality;
+
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  const getVoiceQualityInfo = () => {
+    switch (voiceQuality) {
+      case 'excellent':
+        return { text: '语音质量：优秀', color: 'text-green-600', icon: '🎯' };
+      case 'good':
+        return { text: '语音质量：良好', color: 'text-blue-600', icon: '👍' };
+      case 'basic':
+        return { text: '语音质量：基础', color: 'text-yellow-600', icon: '⚠️' };
+      case 'none':
+        return { text: '未找到泰语语音', color: 'text-red-600', icon: '❌' };
+    }
+  };
 
   const handleSelect = (answer: string) => {
     setSelectedAnswer(answer);
@@ -242,6 +434,71 @@ export function VocabularyQuiz({
     setTimeout(() => {
       onAnswer(answer, isCorrect);
     }, 1500);
+  };
+
+  const playTTS = async () => {
+    if (isPlayingTTS) return;
+
+    setIsPlayingTTS(true);
+    console.log('播放测试词汇语音合成:', vocabulary.thai_word);
+
+    try {
+      if (!('speechSynthesis' in window)) {
+        throw new Error('浏览器不支持语音合成');
+      }
+
+      // 等待语音列表加载
+      const waitForVoices = () => {
+        return new Promise<void>((resolve) => {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            resolve();
+          } else {
+            window.speechSynthesis.onvoiceschanged = () => resolve();
+          }
+        });
+      };
+
+      await waitForVoices();
+
+      // 创建语音合成实例
+      const utterance = new SpeechSynthesisUtterance(vocabulary.thai_word);
+
+      // 使用选定的语音或最佳泰语语音
+      const voiceToUse = selectedVoice || audioManager.getBestThaiVoice();
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        console.log('使用泰语语音:', voiceToUse.name);
+      } else {
+        console.log('未找到泰语语音，使用默认语音');
+      }
+
+      utterance.lang = 'th-TH';
+      utterance.rate = 0.6;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      utterance.onstart = () => {
+        console.log('测试词汇语音合成开始播放');
+      };
+
+      utterance.onend = () => {
+        console.log('测试词汇语音合成播放完成');
+        setIsPlayingTTS(false);
+      };
+
+      utterance.onerror = (event) => {
+        console.error('测试词汇语音合成播放错误:', event.error);
+        setIsPlayingTTS(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+
+    } catch (error) {
+      console.error('测试词汇语音合成播放失败:', error);
+      setIsPlayingTTS(false);
+    }
   };
 
   const getButtonVariant = (option: string) => {
@@ -256,19 +513,52 @@ export function VocabularyQuiz({
       <div className="bg-white rounded-lg shadow-lg p-6">
         {/* Question */}
         <div className="text-center mb-6">
-          <div className="text-sm text-gray-500 chinese-text mb-2">
-            选择正确的中文翻译
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-gray-500 chinese-text">
+              选择正确的中文翻译
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className={`text-xs ${getVoiceQualityInfo().color}`}>
+                {getVoiceQualityInfo().icon} {getVoiceQualityInfo().text}
+              </span>
+              <button
+                onClick={() => setShowVoiceSetup(true)}
+                className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                title="语音设置"
+              >
+                <Settings className="h-3 w-3" />
+              </button>
+            </div>
           </div>
           <div className="text-3xl thai-text text-blue-600 font-bold mb-3">
             {vocabulary.thai_word}
           </div>
-          {vocabulary.audio_url && (
-            <AudioPlayer 
-              src={vocabulary.audio_url} 
-              variant="minimal"
-              className="justify-center mb-3"
-            />
-          )}
+          <div className="flex justify-center mb-3">
+            {vocabulary.audio_url ? (
+              <AudioPlayer
+                src={vocabulary.audio_url}
+                variant="minimal"
+              />
+            ) : (
+              <Button
+                onClick={playTTS}
+                disabled={isPlayingTTS}
+                variant="outline"
+                size="sm"
+                icon={isPlayingTTS ? undefined : Play}
+                className="chinese-text"
+              >
+                {isPlayingTTS ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                    播放中...
+                  </>
+                ) : (
+                  '🔊 播放发音'
+                )}
+              </Button>
+            )}
+          </div>
           <div className="text-lg text-gray-600">
             [{vocabulary.pronunciation}]
           </div>
@@ -324,6 +614,19 @@ export function VocabularyQuiz({
           </div>
         )}
       </div>
+
+      {/* 语音设置指导弹窗 */}
+      {showVoiceSetup && (
+        <VoiceSetupGuide
+          onClose={() => setShowVoiceSetup(false)}
+          onVoiceSelected={(voice) => {
+            setSelectedVoice(voice);
+            // 重新检查语音质量
+            const quality = audioManager.getVoiceQuality();
+            setVoiceQuality(quality);
+          }}
+        />
+      )}
     </div>
   );
 }
