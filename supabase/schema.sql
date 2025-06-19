@@ -141,6 +141,65 @@ CREATE TABLE public.audio_files (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Thai consonants table
+CREATE TABLE public.thai_consonants (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    letter TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    meaning TEXT NOT NULL,
+    chinese_meaning TEXT NOT NULL,
+    pronunciation TEXT NOT NULL,
+    sound TEXT NOT NULL,
+    tone_class TEXT NOT NULL CHECK (tone_class IN ('high', 'mid', 'low')),
+    initial_sound TEXT,
+    final_sound TEXT,
+    strokes JSONB,
+    stroke_count INTEGER,
+    order_index INTEGER NOT NULL,
+    difficulty_level difficulty_level DEFAULT 'beginner',
+    audio_url TEXT,
+    is_obsolete BOOLEAN DEFAULT FALSE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Thai vowels table
+CREATE TABLE public.thai_vowels (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    symbol TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    sound TEXT NOT NULL,
+    length TEXT NOT NULL CHECK (length IN ('short', 'long')),
+    position TEXT NOT NULL CHECK (position IN ('before', 'after', 'above', 'below', 'around')),
+    example_word TEXT,
+    example_meaning TEXT,
+    chinese_meaning TEXT NOT NULL,
+    pronunciation TEXT,
+    strokes JSONB,
+    order_index INTEGER NOT NULL,
+    difficulty_level difficulty_level DEFAULT 'beginner',
+    audio_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User letter progress table
+CREATE TABLE public.user_letter_progress (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    letter_type TEXT NOT NULL CHECK (letter_type IN ('consonant', 'vowel')),
+    letter_id UUID NOT NULL,
+    is_learned BOOLEAN DEFAULT FALSE,
+    practice_count INTEGER DEFAULT 0,
+    last_practiced_at TIMESTAMP WITH TIME ZONE,
+    mastery_level INTEGER DEFAULT 0 CHECK (mastery_level >= 0 AND mastery_level <= 100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, letter_type, letter_id)
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_lessons_type_difficulty ON public.lessons(lesson_type, difficulty_level);
 CREATE INDEX idx_lessons_order ON public.lessons(order_index);
@@ -150,6 +209,10 @@ CREATE INDEX idx_user_lesson_progress_user ON public.user_lesson_progress(user_i
 CREATE INDEX idx_user_vocabulary_progress_user ON public.user_vocabulary_progress(user_id);
 CREATE INDEX idx_user_vocabulary_progress_review ON public.user_vocabulary_progress(next_review_at);
 CREATE INDEX idx_study_sessions_user_date ON public.study_sessions(user_id, session_date);
+CREATE INDEX idx_thai_consonants_order ON public.thai_consonants(order_index);
+CREATE INDEX idx_thai_vowels_order ON public.thai_vowels(order_index);
+CREATE INDEX idx_user_letter_progress_user ON public.user_letter_progress(user_id);
+CREATE INDEX idx_user_letter_progress_type ON public.user_letter_progress(letter_type);
 
 -- Row Level Security (RLS) policies
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -157,6 +220,9 @@ ALTER TABLE public.user_lesson_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_vocabulary_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.study_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.thai_consonants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.thai_vowels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_letter_progress ENABLE ROW LEVEL SECURITY;
 
 -- Users can only see and edit their own data
 CREATE POLICY "Users can view own profile" ON public.users
@@ -214,6 +280,26 @@ CREATE POLICY "Anyone can view achievements" ON public.achievements
 CREATE POLICY "Anyone can view audio files" ON public.audio_files
     FOR SELECT USING (true);
 
+-- Thai letters policies
+CREATE POLICY "Anyone can view thai consonants" ON public.thai_consonants
+    FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can view thai vowels" ON public.thai_vowels
+    FOR SELECT USING (true);
+
+-- User letter progress policies
+CREATE POLICY "Users can view own letter progress" ON public.user_letter_progress
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own letter progress" ON public.user_letter_progress
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own letter progress" ON public.user_letter_progress
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own letter progress" ON public.user_letter_progress
+    FOR DELETE USING (auth.uid() = user_id);
+
 -- Functions for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -240,6 +326,15 @@ CREATE TRIGGER update_user_vocabulary_progress_updated_at BEFORE UPDATE ON publi
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_study_sessions_updated_at BEFORE UPDATE ON public.study_sessions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_thai_consonants_updated_at BEFORE UPDATE ON public.thai_consonants
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_thai_vowels_updated_at BEFORE UPDATE ON public.thai_vowels
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_letter_progress_updated_at BEFORE UPDATE ON public.user_letter_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Function to handle new user registration

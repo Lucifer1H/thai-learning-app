@@ -11,9 +11,17 @@ import { StrokeOrder, PracticeCanvas } from '@/components/lesson/stroke-order';
 import { ArrowLeft, ArrowRight, Volume2, BookOpen } from 'lucide-react';
 import { playAudioWithFallback } from '@/lib/audio-utils';
 import Link from 'next/link';
+import {
+  getThaiConsonants,
+  getUserLetterProgress,
+  markLetterAsLearned,
+  incrementPracticeCount,
+  type ThaiConsonant,
+  type UserLetterProgress
+} from '@/lib/thai-letters';
 
-// Thai consonants data with stroke information
-const thaiConsonants = [
+// Fallback consonants data (if database is unavailable)
+const fallbackConsonants = [
   {
     letter: 'ก',
     name: 'ก ไก่',
@@ -76,6 +84,9 @@ export default function AlphabetLessonPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedLetters, setCompletedLetters] = useState<Set<number>>(new Set());
   const [isPlaying, setIsPlaying] = useState(false);
+  const [consonants, setConsonants] = useState<ThaiConsonant[]>([]);
+  const [userProgress, setUserProgress] = useState<UserLetterProgress[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -83,19 +94,68 @@ export default function AlphabetLessonPage() {
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  // 加载字母数据和用户进度
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
+
+      try {
+        setDataLoading(true);
+        const [consonantsData, progressData] = await Promise.all([
+          getThaiConsonants(),
+          getUserLetterProgress(user.id)
+        ]);
+
+        setConsonants(consonantsData);
+        setUserProgress(progressData);
+
+        // 设置已完成的字母
+        const completedIndices = new Set<number>();
+        consonantsData.forEach((consonant, index) => {
+          const progress = progressData.find(p =>
+            p.letter_type === 'consonant' && p.letter_id === consonant.id
+          );
+          if (progress?.is_learned) {
+            completedIndices.add(index);
+          }
+        });
+        setCompletedLetters(completedIndices);
+
+      } catch (error) {
+        console.error('加载数据失败:', error);
+        // 如果数据库加载失败，使用fallback数据
+        setConsonants(fallbackConsonants.map((c, index) => ({
+          ...c,
+          id: `fallback-${index}`,
+          chinese_meaning: c.chinese,
+          tone_class: 'mid' as const,
+          order_index: index + 1,
+          difficulty_level: 'beginner' as const,
+          is_obsolete: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })));
+      } finally {
+        setDataLoading(false);
+      }
+    }
+
+    loadData();
+  }, [user]);
+
+  if (loading || dataLoading) {
     return <LoadingPage message="加载课程中..." />;
   }
 
-  if (!user) {
+  if (!user || consonants.length === 0) {
     return null;
   }
 
-  const currentLetter = thaiConsonants[currentIndex];
-  const progress = Math.round(((completedLetters.size) / thaiConsonants.length) * 100);
+  const currentLetter = consonants[currentIndex];
+  const progress = Math.round(((completedLetters.size) / consonants.length) * 100);
 
   const handleNext = () => {
-    if (currentIndex < thaiConsonants.length - 1) {
+    if (currentIndex < consonants.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -106,8 +166,22 @@ export default function AlphabetLessonPage() {
     }
   };
 
-  const handleMarkComplete = () => {
-    setCompletedLetters(prev => new Set([...prev, currentIndex]));
+  const handleMarkComplete = async () => {
+    if (!user) return;
+
+    try {
+      const currentLetter = consonants[currentIndex];
+      await markLetterAsLearned(user.id, 'consonant', currentLetter.id);
+      setCompletedLetters(prev => new Set([...prev, currentIndex]));
+
+      // 更新用户进度状态
+      const updatedProgress = await getUserLetterProgress(user.id);
+      setUserProgress(updatedProgress);
+    } catch (error) {
+      console.error('标记字母完成时出错:', error);
+      // 即使API失败，也在本地标记为完成
+      setCompletedLetters(prev => new Set([...prev, currentIndex]));
+    }
   };
 
   const playAudio = async () => {
@@ -148,7 +222,7 @@ export default function AlphabetLessonPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600 chinese-text">
-                {currentIndex + 1} / {thaiConsonants.length}
+                {currentIndex + 1} / {consonants.length}
               </p>
               <ProgressBar progress={progress} className="w-32" showLabel />
             </div>
@@ -189,7 +263,7 @@ export default function AlphabetLessonPage() {
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600 chinese-text mb-1">含义</p>
                   <p className="text-lg font-semibold text-green-700">
-                    {currentLetter.meaning} ({currentLetter.chinese})
+                    {currentLetter.meaning} ({currentLetter.chinese_meaning})
                   </p>
                 </div>
 
@@ -225,7 +299,7 @@ export default function AlphabetLessonPage() {
                   </Button>
                   <Button
                     onClick={handleNext}
-                    disabled={currentIndex === thaiConsonants.length - 1}
+                    disabled={currentIndex === consonants.length - 1}
                     variant="outline"
                     icon={ArrowRight}
                     iconPosition="right"
@@ -261,7 +335,7 @@ export default function AlphabetLessonPage() {
                 <div className="bg-yellow-50 p-3 rounded">
                   <p className="text-sm chinese-text">
                     <strong>联想记忆：</strong>
-                    {currentLetter.letter} 的形状像 {currentLetter.chinese}，
+                    {currentLetter.letter} 的形状像 {currentLetter.chinese_meaning}，
                     发音是 [{currentLetter.sound}]
                   </p>
                 </div>
@@ -281,7 +355,7 @@ export default function AlphabetLessonPage() {
                 学习进度
               </h3>
               <div className="grid grid-cols-6 gap-2">
-                {thaiConsonants.map((letter, index) => (
+                {consonants.map((letter, index) => (
                   <button
                     key={index}
                     type="button"
@@ -301,14 +375,14 @@ export default function AlphabetLessonPage() {
                 ))}
               </div>
               <p className="text-sm text-gray-600 chinese-text mt-3">
-                已掌握: {completedLetters.size} / {thaiConsonants.length} 个字母
+                已掌握: {completedLetters.size} / {consonants.length} 个字母
               </p>
             </div>
           </div>
         </div>
 
         {/* Completion Message */}
-        {completedLetters.size === thaiConsonants.length && (
+        {completedLetters.size === consonants.length && (
           <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-6 text-center">
             <div className="text-4xl mb-2">🎉</div>
             <h3 className="text-lg font-semibold text-green-800 chinese-text mb-2">

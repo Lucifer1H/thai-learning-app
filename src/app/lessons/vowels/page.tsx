@@ -10,9 +10,17 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { playAudioWithFallback } from '@/lib/audio-utils';
 import Link from 'next/link';
+import {
+  getThaiVowels,
+  getUserLetterProgress,
+  markLetterAsLearned,
+  incrementPracticeCount,
+  type ThaiVowel,
+  type UserLetterProgress
+} from '@/lib/thai-letters';
 
-// Thai vowels data
-const thaiVowels = [
+// Fallback vowels data (if database is unavailable)
+const fallbackVowels = [
   { symbol: 'อะ', sound: 'a', example: 'กะ', chinese: '短a音', pronunciation: 'a', length: 'short' },
   { symbol: 'อา', sound: 'aa', example: 'กา', chinese: '长a音', pronunciation: 'aa', length: 'long' },
   { symbol: 'อิ', sound: 'i', example: 'กิ', chinese: '短i音', pronunciation: 'i', length: 'short' },
@@ -31,6 +39,9 @@ export default function VowelsLessonPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [completedVowels, setCompletedVowels] = useState<Set<number>>(new Set());
   const [isPlaying, setIsPlaying] = useState(false);
+  const [vowels, setVowels] = useState<ThaiVowel[]>([]);
+  const [userProgress, setUserProgress] = useState<UserLetterProgress[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,19 +49,73 @@ export default function VowelsLessonPage() {
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  // 加载元音数据和用户进度
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
+
+      try {
+        setDataLoading(true);
+        const [vowelsData, progressData] = await Promise.all([
+          getThaiVowels(),
+          getUserLetterProgress(user.id)
+        ]);
+
+        setVowels(vowelsData);
+        setUserProgress(progressData);
+
+        // 设置已完成的元音
+        const completedIndices = new Set<number>();
+        vowelsData.forEach((vowel, index) => {
+          const progress = progressData.find(p =>
+            p.letter_type === 'vowel' && p.letter_id === vowel.id
+          );
+          if (progress?.is_learned) {
+            completedIndices.add(index);
+          }
+        });
+        setCompletedVowels(completedIndices);
+
+      } catch (error) {
+        console.error('加载元音数据失败:', error);
+        // 如果数据库加载失败，使用fallback数据
+        setVowels(fallbackVowels.map((v, index) => ({
+          id: `fallback-${index}`,
+          symbol: v.symbol,
+          name: `สระ ${v.symbol}`,
+          sound: v.sound,
+          length: v.length as 'short' | 'long',
+          position: 'after' as const,
+          example_word: v.example,
+          example_meaning: '',
+          chinese_meaning: v.chinese,
+          pronunciation: v.pronunciation,
+          order_index: index + 1,
+          difficulty_level: 'beginner' as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })));
+      } finally {
+        setDataLoading(false);
+      }
+    }
+
+    loadData();
+  }, [user]);
+
+  if (loading || dataLoading) {
     return <LoadingPage message="加载课程中..." />;
   }
 
-  if (!user) {
+  if (!user || vowels.length === 0) {
     return null;
   }
 
-  const currentVowel = thaiVowels[currentIndex];
-  const progress = Math.round(((completedVowels.size) / thaiVowels.length) * 100);
+  const currentVowel = vowels[currentIndex];
+  const progress = Math.round(((completedVowels.size) / vowels.length) * 100);
 
   const handleNext = () => {
-    if (currentIndex < thaiVowels.length - 1) {
+    if (currentIndex < vowels.length - 1) {
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -61,8 +126,22 @@ export default function VowelsLessonPage() {
     }
   };
 
-  const handleMarkComplete = () => {
-    setCompletedVowels(prev => new Set([...prev, currentIndex]));
+  const handleMarkComplete = async () => {
+    if (!user) return;
+
+    try {
+      const currentVowel = vowels[currentIndex];
+      await markLetterAsLearned(user.id, 'vowel', currentVowel.id);
+      setCompletedVowels(prev => new Set([...prev, currentIndex]));
+
+      // 更新用户进度状态
+      const updatedProgress = await getUserLetterProgress(user.id);
+      setUserProgress(updatedProgress);
+    } catch (error) {
+      console.error('标记元音完成时出错:', error);
+      // 即使API失败，也在本地标记为完成
+      setCompletedVowels(prev => new Set([...prev, currentIndex]));
+    }
   };
 
   const playAudio = async () => {
@@ -103,7 +182,7 @@ export default function VowelsLessonPage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600 chinese-text">
-                {currentIndex + 1} / {thaiVowels.length}
+                {currentIndex + 1} / {vowels.length}
               </p>
               <ProgressBar progress={progress} className="w-32" showLabel />
             </div>
@@ -122,7 +201,7 @@ export default function VowelsLessonPage() {
                 </div>
                 <div className="flex items-center justify-center space-x-2">
                   <span className="text-lg text-gray-700 chinese-text">
-                    {currentVowel.chinese}
+                    {currentVowel.chinese_meaning}
                   </span>
                   <AudioButton 
                     onClick={playAudio}
@@ -137,14 +216,14 @@ export default function VowelsLessonPage() {
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600 chinese-text mb-1">发音</p>
                   <p className="text-lg font-semibold text-purple-700">
-                    [{currentVowel.pronunciation}]
+                    [{currentVowel.sound}]
                   </p>
                 </div>
                 
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-600 chinese-text mb-1">示例</p>
                   <p className="text-lg font-semibold text-blue-700 thai-text">
-                    {currentVowel.example}
+                    {currentVowel.example_word || currentVowel.symbol}
                   </p>
                 </div>
 
@@ -180,7 +259,7 @@ export default function VowelsLessonPage() {
                   </Button>
                   <Button
                     onClick={handleNext}
-                    disabled={currentIndex === thaiVowels.length - 1}
+                    disabled={currentIndex === vowels.length - 1}
                     variant="outline"
                     icon={ArrowRight}
                     iconPosition="right"
@@ -247,7 +326,7 @@ export default function VowelsLessonPage() {
                 学习进度
               </h3>
               <div className="grid grid-cols-5 gap-2">
-                {thaiVowels.map((vowel, index) => (
+                {vowels.map((vowel, index) => (
                   <button
                     type="button"
                     key={index}
@@ -267,7 +346,7 @@ export default function VowelsLessonPage() {
                 ))}
               </div>
               <p className="text-sm text-gray-600 chinese-text mt-3">
-                已掌握: {completedVowels.size} / {thaiVowels.length} 个元音
+                已掌握: {completedVowels.size} / {vowels.length} 个元音
               </p>
             </div>
 
@@ -278,9 +357,9 @@ export default function VowelsLessonPage() {
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <span className="thai-text text-lg">{currentVowel.example}</span>
+                  <span className="thai-text text-lg">{currentVowel.example_word || currentVowel.symbol}</span>
                   <span className="text-sm text-gray-600">
-                    [{currentVowel.pronunciation}]
+                    [{currentVowel.sound}]
                   </span>
                 </div>
               </div>
@@ -289,7 +368,7 @@ export default function VowelsLessonPage() {
         </div>
 
         {/* Completion Message */}
-        {completedVowels.size === thaiVowels.length && (
+        {completedVowels.size === vowels.length && (
           <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-6 text-center">
             <div className="text-4xl mb-2">🎉</div>
             <h3 className="text-lg font-semibold text-green-800 chinese-text mb-2">
