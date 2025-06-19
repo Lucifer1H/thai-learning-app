@@ -234,7 +234,7 @@ export default function ConsonantsLessonPage() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -257,92 +257,122 @@ export default function ConsonantsLessonPage() {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Letter Display - Left Column */}
-          <div className="xl:col-span-1">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="text-center">
-                {/* Large Thai Letter */}
-                <div className="mb-6">
-                  <div className="text-8xl thai-text text-blue-600 font-bold mb-2">
-                    {currentLetter.letter}
+        <div>
+          {/* Top Section - Letter Display and Memory Tips */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Letter Display */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="text-center">
+                  {/* Large Thai Letter */}
+                  <div className="mb-6">
+                    <div className="text-8xl thai-text text-blue-600 font-bold mb-2">
+                      {currentLetter.letter}
+                    </div>
+                    <div className="flex items-center justify-center space-x-2">
+                      <span className="text-xl thai-text text-gray-700">
+                        {currentLetter.name}
+                      </span>
+                      <AudioButton
+                        onClick={playAudio}
+                        isPlaying={isPlaying}
+                        className="ml-2"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <span className="text-xl thai-text text-gray-700">
-                      {currentLetter.name}
-                    </span>
-                    <AudioButton
-                      onClick={playAudio}
-                      isPlaying={isPlaying}
-                      className="ml-2"
-                    />
+
+                  {/* Pronunciation Guide */}
+                  <div className="space-y-3 mb-6">
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600 chinese-text mb-1">发音</p>
+                      <p className="text-lg font-semibold text-blue-700">
+                        [{currentLetter.pronunciation}]
+                      </p>
+                    </div>
+
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600 chinese-text mb-1">含义</p>
+                      <p className="text-lg font-semibold text-green-700">
+                        {currentLetter.meaning} ({currentLetter.chinese_meaning})
+                      </p>
+                    </div>
+
+                    <div className="bg-purple-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600 chinese-text mb-1">音值</p>
+                      <p className="text-lg font-semibold text-purple-700">
+                        [{currentLetter.sound}]
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleMarkComplete}
+                      disabled={completedLetters.has(currentIndex)}
+                      variant={completedLetters.has(currentIndex) ? 'secondary' : 'primary'}
+                      fullWidth
+                      className="chinese-text"
+                    >
+                      {completedLetters.has(currentIndex) ? '已掌握 ✓' : '标记为已掌握'}
+                    </Button>
+
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={handlePrevious}
+                        disabled={currentIndex === 0}
+                        variant="outline"
+                        icon={ArrowLeft}
+                        className="flex-1 chinese-text"
+                      >
+                        上一个
+                      </Button>
+                      <Button
+                        onClick={handleNext}
+                        disabled={currentIndex === consonants.length - 1}
+                        variant="outline"
+                        icon={ArrowRight}
+                        iconPosition="right"
+                        className="flex-1 chinese-text"
+                      >
+                        下一个
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Pronunciation Guide */}
-                <div className="space-y-3 mb-6">
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-600 chinese-text mb-1">发音</p>
-                    <p className="text-lg font-semibold text-blue-700">
-                      [{currentLetter.pronunciation}]
+            {/* Memory Tips - Prominent Position */}
+            <div className="lg:col-span-2">
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg shadow-lg p-6 border-l-4 border-yellow-400">
+                <h3 className="text-xl font-bold text-gray-900 chinese-text mb-4 flex items-center">
+                  <span className="text-2xl mr-2">💡</span>
+                  记忆技巧
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold text-yellow-700 chinese-text mb-2">联想记忆</h4>
+                    <p className="text-sm chinese-text text-gray-700">
+                      <strong>{currentLetter.letter}</strong> 的形状像 <strong>{currentLetter.chinese_meaning}</strong>，
+                      发音是 <strong>[{currentLetter.sound}]</strong>
                     </p>
                   </div>
-
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-600 chinese-text mb-1">含义</p>
-                    <p className="text-lg font-semibold text-green-700">
-                      {currentLetter.meaning} ({currentLetter.chinese_meaning})
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold text-blue-700 chinese-text mb-2">发音提示</h4>
+                    <p className="text-sm chinese-text text-gray-700">
+                      这个字母在泰语中的发音类似中文的某些音，
+                      多听多练习可以更好地掌握。
                     </p>
-                  </div>
-
-                  <div className="bg-purple-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-600 chinese-text mb-1">音值</p>
-                    <p className="text-lg font-semibold text-purple-700">
-                      [{currentLetter.sound}]
-                    </p>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleMarkComplete}
-                    disabled={completedLetters.has(currentIndex)}
-                    variant={completedLetters.has(currentIndex) ? 'secondary' : 'primary'}
-                    fullWidth
-                    className="chinese-text"
-                  >
-                    {completedLetters.has(currentIndex) ? '已掌握 ✓' : '标记为已掌握'}
-                  </Button>
-
-                  <div className="flex space-x-2">
-                    <Button
-                      onClick={handlePrevious}
-                      disabled={currentIndex === 0}
-                      variant="outline"
-                      icon={ArrowLeft}
-                      className="flex-1 chinese-text"
-                    >
-                      上一个
-                    </Button>
-                    <Button
-                      onClick={handleNext}
-                      disabled={currentIndex === consonants.length - 1}
-                      variant="outline"
-                      icon={ArrowRight}
-                      iconPosition="right"
-                      className="flex-1 chinese-text"
-                    >
-                      下一个
-                    </Button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Stroke Order Practice - Middle Column */}
-          <div className="xl:col-span-1">
+          {/* Bottom Section - Practice Areas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Stroke Order Practice */}
             <div className="bg-white rounded-lg shadow-lg">
               <StrokeOrder
                 letter={currentLetter.letter}
@@ -350,10 +380,7 @@ export default function ConsonantsLessonPage() {
                 className="shadow-none"
               />
             </div>
-          </div>
 
-          {/* Writing Practice and Progress - Right Column */}
-          <div className="xl:col-span-1 space-y-6">
             {/* Writing Practice Canvas */}
             <div className="bg-white rounded-lg shadow-lg">
               <PracticeCanvas
@@ -362,38 +389,20 @@ export default function ConsonantsLessonPage() {
                 className="shadow-none"
               />
             </div>
-
-            {/* Memory Tips */}
-            <div className="bg-white rounded-lg shadow-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-3">
-                记忆技巧
-              </h3>
-              <div className="space-y-2">
-                <div className="bg-yellow-50 p-3 rounded">
-                  <p className="text-sm chinese-text">
-                    <strong>联想记忆：</strong>
-                    {currentLetter.letter} 的形状像 {currentLetter.chinese_meaning}，
-                    发音是 [{currentLetter.sound}]
-                  </p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded">
-                  <p className="text-sm chinese-text">
-                    <strong>发音提示：</strong>
-                    这个字母在泰语中的发音类似中文的某些音，
-                    多听多练习可以更好地掌握。
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* Progress Overview - Full Width */}
+        {/* Progress Overview */}
         <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-4">
-            学习进度
-          </h3>
-          <div className="grid grid-cols-8 sm:grid-cols-11 md:grid-cols-22 gap-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 chinese-text">
+              学习进度
+            </h3>
+            <p className="text-sm text-gray-600 chinese-text">
+              已掌握: {completedLetters.size} / {consonants.length} 个字母
+            </p>
+          </div>
+          <div className="grid grid-cols-11 sm:grid-cols-22 gap-2">
             {consonants.map((letter, index) => (
               <button
                 key={index}
@@ -414,9 +423,6 @@ export default function ConsonantsLessonPage() {
               </button>
             ))}
           </div>
-          <p className="text-sm text-gray-600 chinese-text mt-3">
-            已掌握: {completedLetters.size} / {consonants.length} 个字母
-          </p>
         </div>
 
         {/* Completion Message */}
