@@ -329,8 +329,11 @@ export default function ConsonantsLessonPage() {
       window.speechSynthesis.speak(utterance);
 
       // 额外的音频诊断信息
+      const availableVoices = window.speechSynthesis.getVoices();
+      const thaiVoice = audioManager.getBestThaiVoice();
+
       console.log('🔧 音频诊断信息：');
-      console.log('- 可用语音数量:', voices.length);
+      console.log('- 可用语音数量:', availableVoices.length);
       console.log('- 泰语语音:', thaiVoice ? `找到: ${thaiVoice.name}` : '未找到，使用默认语音');
       console.log('- 语音合成支持:', 'speechSynthesis' in window ? '✅ 支持' : '❌ 不支持');
       console.log('- 当前音量设置:', utterance.volume);

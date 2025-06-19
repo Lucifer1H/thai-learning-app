@@ -329,7 +329,7 @@ export function ImprovedWritingPractice({ letter, onComplete, className }: Impro
       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
         <p className="text-sm text-blue-800 chinese-text">
           💡 <strong>使用提示：</strong>
-          参考左侧标准字形，在右侧练习区域书写。完成后点击"比对字形"进行评估。
+          参考左侧标准字形，在右侧练习区域书写。完成后点击&ldquo;比对字形&rdquo;进行评估。
           相似度达到70%以上即可通过练习。
         </p>
       </div>
