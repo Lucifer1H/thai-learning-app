@@ -3,21 +3,19 @@ const nextConfig = {
   experimental: {
     // Enable experimental features if needed
   },
+  // Note: images config moved above for static export compatibility
+  // Enable static exports for better deployment compatibility
+  output: 'export',
+  trailingSlash: true,
   images: {
-    domains: [
-      // Add domains for external images
-      'supabase.co',
-      'your-cdn-domain.com'
-    ],
+    unoptimized: true, // Required for static export
   },
-  // Enable static exports if needed
-  // output: 'export',
   
-  // Internationalization
-  i18n: {
-    locales: ['zh-CN', 'th'],
-    defaultLocale: 'zh-CN',
-  },
+  // Internationalization (disabled for static export)
+  // i18n: {
+  //   locales: ['zh-CN', 'th'],
+  //   defaultLocale: 'zh-CN',
+  // },
   
   // Environment variables
   env: {
