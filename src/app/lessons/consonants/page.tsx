@@ -29,7 +29,11 @@ const fallbackConsonants = [
     meaning: 'chicken',
     chinese: '鸡',
     pronunciation: 'gɔɔ gài',
-    strokes: ['M50,50 Q100,30 150,50 Q100,70 50,50', 'M100,50 L100,150']
+    strokes: [
+      'M60,40 Q90,30 120,40 Q90,50 60,40', // 上部圆弧
+      'M90,40 L90,120', // 中间竖线
+      'M75,75 L105,75' // 中间横线
+    ]
   },
   {
     letter: 'ข',
@@ -38,7 +42,12 @@ const fallbackConsonants = [
     meaning: 'egg',
     chinese: '蛋',
     pronunciation: 'khɔ̌ɔ khài',
-    strokes: ['M50,50 Q100,30 150,50 Q100,70 50,50', 'M100,50 L100,150', 'M80,80 L120,80']
+    strokes: [
+      'M50,40 Q80,30 110,40 Q80,50 50,40', // 左侧圆弧
+      'M80,40 L80,120', // 左侧竖线
+      'M65,75 L95,75', // 左侧横线
+      'M120,35 Q135,30 150,35 Q135,40 120,35' // 右侧小圆弧
+    ]
   },
   {
     letter: 'ค',
@@ -47,7 +56,13 @@ const fallbackConsonants = [
     meaning: 'buffalo',
     chinese: '水牛',
     pronunciation: 'khɔɔ khwaai',
-    strokes: ['M50,50 Q100,30 150,50 Q100,70 50,50', 'M100,50 L100,150', 'M70,100 L130,100']
+    strokes: [
+      'M50,40 Q80,30 110,40 Q80,50 50,40', // 左侧圆弧
+      'M80,40 L80,120', // 左侧竖线
+      'M65,75 L95,75', // 左侧横线
+      'M120,45 L140,45', // 右侧横线
+      'M130,35 L130,55' // 右侧竖线
+    ]
   },
   {
     letter: 'ง',
@@ -56,7 +71,10 @@ const fallbackConsonants = [
     meaning: 'snake',
     chinese: '蛇',
     pronunciation: 'ngɔɔ nguu',
-    strokes: ['M50,80 Q100,50 150,80 Q100,110 50,80']
+    strokes: [
+      'M70,50 Q100,40 130,50 Q100,60 70,50', // 上部圆弧
+      'M100,50 L100,100 Q90,110 80,100' // 下部带钩
+    ]
   },
   {
     letter: 'จ',
@@ -65,7 +83,11 @@ const fallbackConsonants = [
     meaning: 'plate',
     chinese: '盘子',
     pronunciation: 'jɔɔ jaan',
-    strokes: ['M50,50 L150,50', 'M100,50 L100,150', 'M80,120 Q100,140 120,120']
+    strokes: [
+      'M60,45 L120,45', // 上横线
+      'M90,45 L90,100', // 中竖线
+      'M80,100 Q90,110 100,100' // 下部小弧
+    ]
   },
   {
     letter: 'ฉ',
@@ -74,7 +96,12 @@ const fallbackConsonants = [
     meaning: 'cymbal',
     chinese: '钹',
     pronunciation: 'chɔ̌ɔ chìng',
-    strokes: ['M50,50 L150,50', 'M100,50 L100,150', 'M70,80 L130,80', 'M80,120 Q100,140 120,120']
+    strokes: [
+      'M60,45 L120,45', // 上横线
+      'M90,45 L90,100', // 中竖线
+      'M75,70 L105,70', // 中横线
+      'M80,100 Q90,110 100,100' // 下部小弧
+    ]
   },
 ];
 
@@ -230,108 +257,118 @@ export default function ConsonantsLessonPage() {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Letter Display */}
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-center">
-              {/* Large Thai Letter */}
-              <div className="mb-6">
-                <div className="text-8xl thai-text text-blue-600 font-bold mb-2">
-                  {currentLetter.letter}
-                </div>
-                <div className="flex items-center justify-center space-x-2">
-                  <span className="text-xl thai-text text-gray-700">
-                    {currentLetter.name}
-                  </span>
-                  <AudioButton 
-                    onClick={playAudio}
-                    isPlaying={isPlaying}
-                    className="ml-2"
-                  />
-                </div>
-              </div>
-
-              {/* Pronunciation Guide */}
-              <div className="space-y-3 mb-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 chinese-text mb-1">发音</p>
-                  <p className="text-lg font-semibold text-blue-700">
-                    [{currentLetter.pronunciation}]
-                  </p>
-                </div>
-                
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 chinese-text mb-1">含义</p>
-                  <p className="text-lg font-semibold text-green-700">
-                    {currentLetter.meaning} ({currentLetter.chinese_meaning})
-                  </p>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Letter Display - Left Column */}
+          <div className="xl:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="text-center">
+                {/* Large Thai Letter */}
+                <div className="mb-6">
+                  <div className="text-8xl thai-text text-blue-600 font-bold mb-2">
+                    {currentLetter.letter}
+                  </div>
+                  <div className="flex items-center justify-center space-x-2">
+                    <span className="text-xl thai-text text-gray-700">
+                      {currentLetter.name}
+                    </span>
+                    <AudioButton
+                      onClick={playAudio}
+                      isPlaying={isPlaying}
+                      className="ml-2"
+                    />
+                  </div>
                 </div>
 
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 chinese-text mb-1">音值</p>
-                  <p className="text-lg font-semibold text-purple-700">
-                    [{currentLetter.sound}]
-                  </p>
-                </div>
-              </div>
+                {/* Pronunciation Guide */}
+                <div className="space-y-3 mb-6">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-600 chinese-text mb-1">发音</p>
+                    <p className="text-lg font-semibold text-blue-700">
+                      [{currentLetter.pronunciation}]
+                    </p>
+                  </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                <Button
-                  onClick={handleMarkComplete}
-                  disabled={completedLetters.has(currentIndex)}
-                  variant={completedLetters.has(currentIndex) ? 'secondary' : 'primary'}
-                  fullWidth
-                  className="chinese-text"
-                >
-                  {completedLetters.has(currentIndex) ? '已掌握 ✓' : '标记为已掌握'}
-                </Button>
-                
-                <div className="flex space-x-2">
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-600 chinese-text mb-1">含义</p>
+                    <p className="text-lg font-semibold text-green-700">
+                      {currentLetter.meaning} ({currentLetter.chinese_meaning})
+                    </p>
+                  </div>
+
+                  <div className="bg-purple-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-600 chinese-text mb-1">音值</p>
+                    <p className="text-lg font-semibold text-purple-700">
+                      [{currentLetter.sound}]
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
                   <Button
-                    onClick={handlePrevious}
-                    disabled={currentIndex === 0}
-                    variant="outline"
-                    icon={ArrowLeft}
-                    className="flex-1 chinese-text"
+                    onClick={handleMarkComplete}
+                    disabled={completedLetters.has(currentIndex)}
+                    variant={completedLetters.has(currentIndex) ? 'secondary' : 'primary'}
+                    fullWidth
+                    className="chinese-text"
                   >
-                    上一个
+                    {completedLetters.has(currentIndex) ? '已掌握 ✓' : '标记为已掌握'}
                   </Button>
-                  <Button
-                    onClick={handleNext}
-                    disabled={currentIndex === consonants.length - 1}
-                    variant="outline"
-                    icon={ArrowRight}
-                    iconPosition="right"
-                    className="flex-1 chinese-text"
-                  >
-                    下一个
-                  </Button>
+
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={handlePrevious}
+                      disabled={currentIndex === 0}
+                      variant="outline"
+                      icon={ArrowLeft}
+                      className="flex-1 chinese-text"
+                    >
+                      上一个
+                    </Button>
+                    <Button
+                      onClick={handleNext}
+                      disabled={currentIndex === consonants.length - 1}
+                      variant="outline"
+                      icon={ArrowRight}
+                      iconPosition="right"
+                      className="flex-1 chinese-text"
+                    >
+                      下一个
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Learning Tips */}
-          <div className="space-y-6">
-            {/* Stroke Order Practice */}
-            <StrokeOrder
-              letter={currentLetter.letter}
-              strokes={currentLetter.strokes}
-            />
+          {/* Stroke Order Practice - Middle Column */}
+          <div className="xl:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg">
+              <StrokeOrder
+                letter={currentLetter.letter}
+                strokes={currentLetter.strokes}
+                className="shadow-none"
+              />
+            </div>
+          </div>
 
+          {/* Writing Practice and Progress - Right Column */}
+          <div className="xl:col-span-1 space-y-6">
             {/* Writing Practice Canvas */}
-            <PracticeCanvas
-              letter={currentLetter.letter}
-              onComplete={() => console.log('Practice completed!')}
-            />
+            <div className="bg-white rounded-lg shadow-lg">
+              <PracticeCanvas
+                letter={currentLetter.letter}
+                onComplete={() => console.log('Practice completed!')}
+                className="shadow-none"
+              />
+            </div>
 
             {/* Memory Tips */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-4">
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-3">
                 记忆技巧
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="bg-yellow-50 p-3 rounded">
                   <p className="text-sm chinese-text">
                     <strong>联想记忆：</strong>
@@ -348,37 +385,38 @@ export default function ConsonantsLessonPage() {
                 </div>
               </div>
             </div>
-
-            {/* Progress Overview */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-4">
-                学习进度
-              </h3>
-              <div className="grid grid-cols-6 gap-2">
-                {consonants.map((letter, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCurrentIndex(index)}
-                    className={`
-                      p-2 rounded text-center thai-text text-lg font-semibold transition-colors
-                      ${index === currentIndex 
-                        ? 'bg-blue-500 text-white' 
-                        : completedLetters.has(index)
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }
-                    `}
-                  >
-                    {letter.letter}
-                  </button>
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 chinese-text mt-3">
-                已掌握: {completedLetters.size} / {consonants.length} 个字母
-              </p>
-            </div>
           </div>
+        </div>
+
+        {/* Progress Overview - Full Width */}
+        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-4">
+            学习进度
+          </h3>
+          <div className="grid grid-cols-8 sm:grid-cols-11 md:grid-cols-22 gap-2">
+            {consonants.map((letter, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setCurrentIndex(index)}
+                className={`
+                  aspect-square rounded text-center thai-text text-sm font-semibold transition-colors
+                  ${index === currentIndex
+                    ? 'bg-blue-500 text-white'
+                    : completedLetters.has(index)
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }
+                `}
+                title={letter.name}
+              >
+                {letter.letter}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-gray-600 chinese-text mt-3">
+            已掌握: {completedLetters.size} / {consonants.length} 个字母
+          </p>
         </div>
 
         {/* Completion Message */}
