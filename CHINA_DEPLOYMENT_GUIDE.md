@@ -2,6 +2,10 @@
 
 由于 Vercel 在国内访问存在问题，本指南提供了几个国内友好的部署方案。
 
+## ✅ 当前部署状态
+
+**已成功部署到 Netlify：** https://dailythailearning.netlify.app
+
 ## 🎯 推荐方案
 
 ### 方案一：Netlify（最简单）
