@@ -30,12 +30,17 @@
 在 "Environment Variables" 部分添加：
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://eqkzozmcgrlvcvfpyicy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxa3pvem1jZ3JsdmN2ZnB5aWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNDYwOTMsImV4cCI6MjA2NTgyMjA5M30.GUNb-wRhKm6unJLS91TqiryzkYJiyiQJJcAjqx_-jJc
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVxa3pvem1jZ3JsdmN2ZnB5aWN5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDI0NjA5MywiZXhwIjoyMDY1ODIyMDkzfQ.7JMu9Ihnl64dbT1t7ZcUyFcLYcJLwS-rRCAMiuC-j0w
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 NEXTAUTH_SECRET=your-super-secret-key-for-production-change-this
 NODE_ENV=production
 ```
+
+**⚠️ 重要安全提示：**
+- 请从您的 Supabase 项目设置中获取实际的密钥值
+- 绝不要在公开代码中暴露真实的密钥
+- 只在 Vercel 的环境变量设置中添加真实密钥
 
 ### 5. 部署
 - 点击 "Deploy"
