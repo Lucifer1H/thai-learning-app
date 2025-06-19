@@ -5,87 +5,24 @@ import { useAuth } from '@/components/providers';
 import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/ui/navigation';
 import { LoadingPage } from '@/components/ui/loading';
-import { Button, AudioButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { StrokeOrder, PracticeCanvas } from '@/components/lesson/stroke-order';
-import { ArrowLeft, ArrowRight, Volume2, BookOpen } from 'lucide-react';
-import { playAudioWithFallback } from '@/lib/audio-utils';
+import { ArrowLeft, BookOpen, Type, Volume2, Users, Target } from 'lucide-react';
 import Link from 'next/link';
 import {
   getThaiConsonants,
-  getUserLetterProgress,
-  markLetterAsLearned,
-  incrementPracticeCount,
+  getThaiVowels,
+  getLetterLearningStats,
   type ThaiConsonant,
-  type UserLetterProgress
+  type ThaiVowel
 } from '@/lib/thai-letters';
-
-// Fallback consonants data (if database is unavailable)
-const fallbackConsonants = [
-  {
-    letter: 'ก',
-    name: 'ก ไก่',
-    sound: 'g',
-    meaning: 'chicken',
-    chinese: '鸡',
-    pronunciation: 'gɔɔ gài',
-    strokes: ['M50,50 Q100,30 150,50 Q100,70 50,50', 'M100,50 L100,150']
-  },
-  {
-    letter: 'ข',
-    name: 'ข ไข่',
-    sound: 'kh',
-    meaning: 'egg',
-    chinese: '蛋',
-    pronunciation: 'khɔ̌ɔ khài',
-    strokes: ['M50,50 Q100,30 150,50 Q100,70 50,50', 'M100,50 L100,150', 'M80,80 L120,80']
-  },
-  {
-    letter: 'ค',
-    name: 'ค ควาย',
-    sound: 'kh',
-    meaning: 'buffalo',
-    chinese: '水牛',
-    pronunciation: 'khɔɔ khwaai',
-    strokes: ['M50,50 Q100,30 150,50 Q100,70 50,50', 'M100,50 L100,150', 'M70,100 L130,100']
-  },
-  {
-    letter: 'ง',
-    name: 'ง งู',
-    sound: 'ng',
-    meaning: 'snake',
-    chinese: '蛇',
-    pronunciation: 'ngɔɔ nguu',
-    strokes: ['M50,80 Q100,50 150,80 Q100,110 50,80']
-  },
-  {
-    letter: 'จ',
-    name: 'จ จาน',
-    sound: 'j',
-    meaning: 'plate',
-    chinese: '盘子',
-    pronunciation: 'jɔɔ jaan',
-    strokes: ['M50,50 L150,50', 'M100,50 L100,150', 'M80,120 Q100,140 120,120']
-  },
-  {
-    letter: 'ฉ',
-    name: 'ฉ ฉิ่ง',
-    sound: 'ch',
-    meaning: 'cymbal',
-    chinese: '钹',
-    pronunciation: 'chɔ̌ɔ chìng',
-    strokes: ['M50,50 L150,50', 'M100,50 L100,150', 'M70,80 L130,80', 'M80,120 Q100,140 120,120']
-  },
-];
 
 export default function AlphabetLessonPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [completedLetters, setCompletedLetters] = useState<Set<number>>(new Set());
-  const [isPlaying, setIsPlaying] = useState(false);
   const [consonants, setConsonants] = useState<ThaiConsonant[]>([]);
-  const [userProgress, setUserProgress] = useState<UserLetterProgress[]>([]);
+  const [vowels, setVowels] = useState<ThaiVowel[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -94,47 +31,25 @@ export default function AlphabetLessonPage() {
     }
   }, [user, loading, router]);
 
-  // 加载字母数据和用户进度
+  // 加载字母数据和统计信息
   useEffect(() => {
     async function loadData() {
       if (!user) return;
 
       try {
         setDataLoading(true);
-        const [consonantsData, progressData] = await Promise.all([
+        const [consonantsData, vowelsData, statsData] = await Promise.all([
           getThaiConsonants(),
-          getUserLetterProgress(user.id)
+          getThaiVowels(),
+          getLetterLearningStats(user.id)
         ]);
 
         setConsonants(consonantsData);
-        setUserProgress(progressData);
-
-        // 设置已完成的字母
-        const completedIndices = new Set<number>();
-        consonantsData.forEach((consonant, index) => {
-          const progress = progressData.find(p =>
-            p.letter_type === 'consonant' && p.letter_id === consonant.id
-          );
-          if (progress?.is_learned) {
-            completedIndices.add(index);
-          }
-        });
-        setCompletedLetters(completedIndices);
+        setVowels(vowelsData);
+        setStats(statsData);
 
       } catch (error) {
         console.error('加载数据失败:', error);
-        // 如果数据库加载失败，使用fallback数据
-        setConsonants(fallbackConsonants.map((c, index) => ({
-          ...c,
-          id: `fallback-${index}`,
-          chinese_meaning: c.chinese,
-          tone_class: 'mid' as const,
-          order_index: index + 1,
-          difficulty_level: 'beginner' as const,
-          is_obsolete: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })));
       } finally {
         setDataLoading(false);
       }
@@ -147,258 +62,205 @@ export default function AlphabetLessonPage() {
     return <LoadingPage message="加载课程中..." />;
   }
 
-  if (!user || consonants.length === 0) {
+  if (!user) {
     return null;
   }
 
-  const currentLetter = consonants[currentIndex];
-  const progress = Math.round(((completedLetters.size) / consonants.length) * 100);
-
-  const handleNext = () => {
-    if (currentIndex < consonants.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
-
-  const handleMarkComplete = async () => {
-    if (!user) return;
-
-    try {
-      const currentLetter = consonants[currentIndex];
-      await markLetterAsLearned(user.id, 'consonant', currentLetter.id);
-      setCompletedLetters(prev => new Set([...prev, currentIndex]));
-
-      // 更新用户进度状态
-      const updatedProgress = await getUserLetterProgress(user.id);
-      setUserProgress(updatedProgress);
-    } catch (error) {
-      console.error('标记字母完成时出错:', error);
-      // 即使API失败，也在本地标记为完成
-      setCompletedLetters(prev => new Set([...prev, currentIndex]));
-    }
-  };
-
-  const playAudio = async () => {
-    if (isPlaying) return;
-
-    setIsPlaying(true);
-
-    try {
-      // 尝试播放音频文件，如果失败则使用语音合成
-      const audioUrl = `/audio/consonants/${currentLetter.letter}.mp3`;
-      await playAudioWithFallback(audioUrl, currentLetter.letter, {
-        lang: 'th-TH',
-        rate: 0.8
-      });
-    } catch (error) {
-      console.warn('音频播放失败:', error);
-    } finally {
-      setIsPlaying(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Navigation />
       
-      <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-700">
-                <ArrowLeft className="h-6 w-6" />
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 chinese-text">泰语字母学习</h1>
-                <p className="text-gray-600 chinese-text">学习泰语辅音字母</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600 chinese-text">
-                {currentIndex + 1} / {consonants.length}
-              </p>
-              <ProgressBar progress={progress} className="w-32" showLabel />
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Letter Display */}
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-center">
-              {/* Large Thai Letter */}
-              <div className="mb-6">
-                <div className="text-8xl thai-text text-blue-600 font-bold mb-2">
-                  {currentLetter.letter}
-                </div>
-                <div className="flex items-center justify-center space-x-2">
-                  <span className="text-xl thai-text text-gray-700">
-                    {currentLetter.name}
-                  </span>
-                  <AudioButton 
-                    onClick={playAudio}
-                    isPlaying={isPlaying}
-                    className="ml-2"
-                  />
-                </div>
-              </div>
-
-              {/* Pronunciation Guide */}
-              <div className="space-y-3 mb-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 chinese-text mb-1">发音</p>
-                  <p className="text-lg font-semibold text-blue-700">
-                    [{currentLetter.pronunciation}]
-                  </p>
-                </div>
-                
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 chinese-text mb-1">含义</p>
-                  <p className="text-lg font-semibold text-green-700">
-                    {currentLetter.meaning} ({currentLetter.chinese_meaning})
-                  </p>
-                </div>
-
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 chinese-text mb-1">音值</p>
-                  <p className="text-lg font-semibold text-purple-700">
-                    [{currentLetter.sound}]
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                <Button
-                  onClick={handleMarkComplete}
-                  disabled={completedLetters.has(currentIndex)}
-                  variant={completedLetters.has(currentIndex) ? 'secondary' : 'primary'}
-                  fullWidth
-                  className="chinese-text"
-                >
-                  {completedLetters.has(currentIndex) ? '已掌握 ✓' : '标记为已掌握'}
-                </Button>
-                
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={handlePrevious}
-                    disabled={currentIndex === 0}
-                    variant="outline"
-                    icon={ArrowLeft}
-                    className="flex-1 chinese-text"
-                  >
-                    上一个
-                  </Button>
-                  <Button
-                    onClick={handleNext}
-                    disabled={currentIndex === consonants.length - 1}
-                    variant="outline"
-                    icon={ArrowRight}
-                    iconPosition="right"
-                    className="flex-1 chinese-text"
-                  >
-                    下一个
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Learning Tips */}
-          <div className="space-y-6">
-            {/* Stroke Order Practice */}
-            <StrokeOrder
-              letter={currentLetter.letter}
-              strokes={currentLetter.strokes}
-            />
-
-            {/* Writing Practice Canvas */}
-            <PracticeCanvas
-              letter={currentLetter.letter}
-              onComplete={() => console.log('Practice completed!')}
-            />
-
-            {/* Memory Tips */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-4">
-                记忆技巧
-              </h3>
-              <div className="space-y-3">
-                <div className="bg-yellow-50 p-3 rounded">
-                  <p className="text-sm chinese-text">
-                    <strong>联想记忆：</strong>
-                    {currentLetter.letter} 的形状像 {currentLetter.chinese_meaning}，
-                    发音是 [{currentLetter.sound}]
-                  </p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded">
-                  <p className="text-sm chinese-text">
-                    <strong>发音提示：</strong>
-                    这个字母在泰语中的发音类似中文的某些音，
-                    多听多练习可以更好地掌握。
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Overview */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 chinese-text mb-4">
-                学习进度
-              </h3>
-              <div className="grid grid-cols-6 gap-2">
-                {consonants.map((letter, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCurrentIndex(index)}
-                    className={`
-                      p-2 rounded text-center thai-text text-lg font-semibold transition-colors
-                      ${index === currentIndex 
-                        ? 'bg-blue-500 text-white' 
-                        : completedLetters.has(index)
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }
-                    `}
-                  >
-                    {letter.letter}
-                  </button>
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 chinese-text mt-3">
-                已掌握: {completedLetters.size} / {consonants.length} 个字母
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Completion Message */}
-        {completedLetters.size === consonants.length && (
-          <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-            <div className="text-4xl mb-2">🎉</div>
-            <h3 className="text-lg font-semibold text-green-800 chinese-text mb-2">
-              恭喜！您已完成所有字母的学习
-            </h3>
-            <p className="text-green-700 chinese-text mb-4">
-              您已经掌握了泰语的基础辅音字母，可以继续学习元音了！
-            </p>
-            <Link href="/lessons/vowels">
-              <Button
-                variant="primary"
-                className="chinese-text"
-              >
-                继续学习元音
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard">
+              <Button variant="outline" icon={ArrowLeft}>
+                返回首页
               </Button>
             </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">泰语字母学习</h1>
+              <p className="text-gray-600 chinese-text">掌握泰语辅音和元音字母</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Learning Options */}
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          {/* Consonants Card */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+              <div className="flex items-center gap-3 mb-2">
+                <BookOpen className="h-8 w-8" />
+                <h2 className="text-2xl font-bold">辅音字母</h2>
+              </div>
+              <p className="text-blue-100">学习44个泰语辅音字母</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">{consonants.length}</div>
+                  <div className="text-sm text-gray-600">总字母数</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {stats?.consonants?.learned || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">已掌握</div>
+                </div>
+              </div>
+              
+              {stats?.consonants && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>学习进度</span>
+                    <span>{Math.round((stats.consonants.learned / stats.consonants.total) * 100)}%</span>
+                  </div>
+                  <ProgressBar 
+                    progress={(stats.consonants.learned / stats.consonants.total) * 100} 
+                    className="h-2"
+                  />
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Target className="h-4 w-4" />
+                  <span>包含高、中、低音调分类</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Volume2 className="h-4 w-4" />
+                  <span>发音练习和笔画指导</span>
+                </div>
+              </div>
+              
+              <Link href="/lessons/consonants">
+                <Button className="w-full mt-6" variant="primary">
+                  开始学习辅音
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Vowels Card */}
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 text-white">
+              <div className="flex items-center gap-3 mb-2">
+                <Type className="h-8 w-8" />
+                <h2 className="text-2xl font-bold">元音字母</h2>
+              </div>
+              <p className="text-purple-100">学习32个泰语元音</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600">{vowels.length}</div>
+                  <div className="text-sm text-gray-600">总元音数</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {stats?.vowels?.learned || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">已掌握</div>
+                </div>
+              </div>
+              
+              {stats?.vowels && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>学习进度</span>
+                    <span>{Math.round((stats.vowels.learned / stats.vowels.total) * 100)}%</span>
+                  </div>
+                  <ProgressBar 
+                    progress={(stats.vowels.learned / stats.vowels.total) * 100} 
+                    className="h-2"
+                  />
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Target className="h-4 w-4" />
+                  <span>包含长短元音和位置分类</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Volume2 className="h-4 w-4" />
+                  <span>发音示例和使用指导</span>
+                </div>
+              </div>
+              
+              <Link href="/lessons/vowels">
+                <Button className="w-full mt-6" variant="primary">
+                  开始学习元音
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Learning Tips */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-4 chinese-text">学习建议</h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <BookOpen className="h-6 w-6 text-blue-600" />
+              </div>
+              <h4 className="font-semibold text-gray-800 mb-2 chinese-text">先学辅音</h4>
+              <p className="text-sm text-gray-600 chinese-text">
+                建议先掌握44个辅音字母，它们是泰语的基础
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-purple-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <Type className="h-6 w-6 text-purple-600" />
+              </div>
+              <h4 className="font-semibold text-gray-800 mb-2 chinese-text">再学元音</h4>
+              <p className="text-sm text-gray-600 chinese-text">
+                掌握辅音后学习元音，了解它们的位置和长度
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-green-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                <Volume2 className="h-6 w-6 text-green-600" />
+              </div>
+              <h4 className="font-semibold text-gray-800 mb-2 chinese-text">多练发音</h4>
+              <p className="text-sm text-gray-600 chinese-text">
+                反复练习发音，注意音调的区别
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Overall Progress */}
+        {stats && (
+          <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 chinese-text">总体进度</h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>辅音掌握度</span>
+                  <span>{stats.consonants.learned}/{stats.consonants.total}</span>
+                </div>
+                <ProgressBar 
+                  progress={(stats.consonants.learned / stats.consonants.total) * 100} 
+                  className="h-3"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>元音掌握度</span>
+                  <span>{stats.vowels.learned}/{stats.vowels.total}</span>
+                </div>
+                <ProgressBar 
+                  progress={(stats.vowels.learned / stats.vowels.total) * 100} 
+                  className="h-3"
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
